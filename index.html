@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0a0a0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>FotoSort</title>
+<link rel="manifest" href="manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500&display=swap" rel="stylesheet"/>
+<style>
+/* ══ RESET ══ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surf:#12121a;--surf2:#1a1a26;
+  --border:rgba(255,255,255,0.08);--borderacc:rgba(232,255,71,0.3);
+  --acc:#e8ff47;--accDim:rgba(232,255,71,0.15);
+  --txt:#f0f0f8;--muted:rgba(240,240,248,0.45);
+  --red:#ff4757;--redDim:rgba(255,71,87,0.15);
+  --blue:#4fc3f7;--purple:#b388ff;--green:#69f0ae;
+  --r:12px;--rs:8px;
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+}
+html{height:100%;-webkit-text-size-adjust:100%}
+body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
+
+/* ══ SCREEN SYSTEM ══ */
+/* Each screen is full-viewport, hidden by default via visibility+pointer-events */
+.screen{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+  visibility:hidden;pointer-events:none;
+  opacity:0;transition:opacity 0.2s;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  z-index:1;
+}
+.screen.active{
+  visibility:visible;pointer-events:auto;
+  opacity:1;z-index:2;
+}
+
+/* ══ LANDING ══ */
+#s-land{align-items:center;justify-content:center;background:var(--bg)}
+.land-bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.grid-lines{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(232,255,71,0.03)1px,transparent 1px),
+    linear-gradient(90deg,rgba(232,255,71,0.03)1px,transparent 1px);
+  background-size:40px 40px;
+}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.1;animation:drift 12s ease-in-out infinite}
+.orb1{width:500px;height:500px;top:-150px;left:-150px;background:var(--acc);animation-delay:0s}
+.orb2{width:350px;height:350px;bottom:-100px;right:-100px;background:var(--purple);animation-delay:-5s}
+@keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-20px)}}
+
+.land-body{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  gap:1.25rem;text-align:center;
+  padding:2rem 1.5rem;max-width:420px;width:100%;
+}
+.logo-icon svg{animation:fadeUp .5s ease both}
+h1{font-size:clamp(2.8rem,10vw,4.5rem);font-weight:800;letter-spacing:-.03em;animation:fadeUp .5s .08s ease both}
+h1 .acc{color:var(--acc)}
+.tagline{font-size:1rem;color:var(--muted);line-height:1.6;animation:fadeUp .5s .15s ease both}
+.pills{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;animation:fadeUp .5s .22s ease both}
+.pill{background:var(--surf2);border:1px solid var(--border);padding:.35rem .8rem;border-radius:100px;font-size:.75rem;font-family:var(--mono);color:var(--muted)}
+
+/* API box */
+.api-box{
+  width:100%;background:var(--surf);border:1px solid var(--border);
+  border-radius:var(--r);padding:1.1rem;
+  animation:fadeUp .5s .3s ease both;
+}
+.mono-lbl{font-family:var(--mono);font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.api-row{display:flex;gap:.5rem;margin:.5rem 0 .4rem}
+.api-row input{
+  flex:1;background:var(--surf2);border:1px solid var(--border);
+  border-radius:var(--rs);padding:.55rem .75rem;
+  color:var(--txt);font-family:var(--mono);font-size:.82rem;outline:none;
+  transition:border-color .2s;-webkit-appearance:none;
+}
+.api-row input:focus{border-color:var(--borderacc)}
+#api-status{display:block;font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+#api-status.ok{color:var(--green)}
+
+/* Buttons */
+.btn-primary{
+  display:flex;align-items:center;justify-content:center;gap:.6rem;
+  background:var(--acc);color:#0a0a0f;
+  border:none;border-radius:var(--r);padding:.85rem 1.8rem;
+  font-family:var(--font);font-size:1rem;font-weight:700;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .15s,box-shadow .15s;
+  animation:fadeUp .5s .38s ease both;
+  width:100%;max-width:280px;
+}
+.btn-primary:active{transform:scale(.97)}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border);
+  border-radius:var(--rs);padding:.5rem 1rem;
+  color:var(--muted);font-family:var(--font);font-size:.82rem;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:border-color .2s,color .2s;
+}
+.btn-ghost:active{border-color:rgba(255,255,255,.2);color:var(--txt)}
+.btn-danger{
+  display:flex;align-items:center;gap:.4rem;
+  background:var(--red);color:#fff;border:none;
+  border-radius:var(--rs);padding:.45rem 1rem;
+  font-family:var(--font);font-size:.82rem;font-weight:600;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:opacity .2s;
+}
+.btn-danger:disabled{opacity:.3;pointer-events:none}
+.btn-danger:active{opacity:.8}
+.btn-sm{font-size:.78rem;padding:.38rem .8rem}
+
+/* iOS input wrapper */
+.file-input-wrap{
+  position:relative;width:100%;max-width:280px;
+  animation:fadeUp .5s .38s ease both;
+}
+.file-input-wrap input[type=file]{
+  position:absolute;inset:0;width:100%;height:100%;
+  opacity:0;cursor:pointer;z-index:3;
+  -webkit-tap-highlight-color:transparent;
+  font-size:16px; /* prevents iOS zoom */
+}
+.file-input-wrap .btn-visual{
+  display:flex;align-items:center;justify-content:center;gap:.6rem;
+  background:var(--acc);color:#0a0a0f;
+  border-radius:var(--r);padding:.85rem 1.8rem;
+  font-family:var(--font);font-size:1rem;font-weight:700;
+  pointer-events:none;width:100%;
+}
+
+.ios-tip{
+  width:100%;max-width:340px;
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:var(--r);padding:1rem 1.1rem;text-align:left;
+  animation:fadeUp .5s .45s ease both;
+}
+.ios-tip-title{font-size:.8rem;font-weight:700;margin-bottom:.5rem}
+.ios-tip ol{padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
+.ios-tip li{font-size:.75rem;color:var(--muted);line-height:1.5}
+.ios-tip li strong{color:var(--acc)}
+.ios-tip-note{
+  font-family:var(--mono);font-size:.65rem;color:var(--muted);
+  border-top:1px solid var(--border);margin-top:.7rem;padding-top:.6rem;line-height:1.5;
+}
+.mode-badge{
+  font-family:var(--mono);font-size:.7rem;
+  padding:.35rem .85rem;border-radius:100px;border:1px solid;
+  display:inline-block;animation:fadeUp .5s .05s ease both;
+}
+.mode-desktop{background:rgba(105,240,174,.1);border-color:rgba(105,240,174,.3);color:var(--green)}
+.mode-ios{background:rgba(79,195,247,.1);border-color:rgba(79,195,247,.3);color:var(--blue)}
+.fs-note{font-family:var(--mono);font-size:.68rem;color:var(--muted);animation:fadeUp .5s .5s ease both}
+
+/* ══ SCAN SCREEN ══ */
+#s-scan{align-items:center;justify-content:center;background:var(--bg)}
+.scan-wrap{display:flex;flex-direction:column;align-items:center;gap:1.5rem;padding:2rem;max-width:360px;width:100%}
+.scan-grid-box{width:180px;height:180px;position:relative;overflow:hidden;border-radius:var(--r)}
+.scan-cells{
+  width:100%;height:100%;
+  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);
+  gap:3px;background:var(--surf2);
+}
+.scell{background:var(--surf2);border-radius:3px;transition:background .25s}
+.scell.lit{background:var(--acc)}
+.scan-line{
+  position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);
+  box-shadow:0 0 10px var(--acc);
+  animation:scanline 1.8s linear infinite;z-index:2;
+}
+@keyframes scanline{from{top:0;opacity:1}to{top:100%;opacity:.2}}
+#s-scan h2{font-size:1.2rem;font-weight:700;text-align:center}
+.prog-track{width:100%;height:4px;background:var(--surf2);border-radius:100px;overflow:hidden}
+.prog-fill{height:100%;background:var(--acc);border-radius:100px;width:0%;transition:width .3s;box-shadow:0 0 8px var(--acc)}
+#scan-status{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+#scan-stats{font-family:var(--mono);font-size:.72rem;color:var(--muted);text-align:center;min-height:2rem}
+
+/* ══ RESULTS SCREEN ══ */
+#s-results{background:var(--bg);display:flex;flex-direction:column}
+.res-header{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+  padding:.9rem 1.25rem;border-bottom:1px solid var(--border);
+  background:rgba(10,10,15,.95);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);flex-shrink:0;
+  position:sticky;top:0;z-index:10;
+}
+.logo-sm{font-size:1.1rem;font-weight:800}.logo-sm .acc{color:var(--acc)}
+#hdr-stats{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.hdr-right{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+
+.toolbar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;
+  padding:.65rem 1.25rem;border-bottom:1px solid var(--border);
+  background:var(--surf);flex-shrink:0;
+}
+.tabs{display:flex;flex-wrap:wrap;gap:.3rem;flex:1}
+.tab{
+  background:transparent;border:1px solid var(--border);
+  border-radius:100px;padding:.3rem .75rem;
+  color:var(--muted);font-family:var(--font);font-size:.75rem;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s;
+}
+.tab.on{background:var(--accDim);border-color:var(--borderacc);color:var(--acc)}
+.thresh-row{display:flex;align-items:center;gap:.5rem}
+#thresh-slider{width:90px;accent-color:var(--acc)}
+
+.global-bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;
+  padding:.55rem 1.25rem;border-bottom:1px solid var(--border);
+  background:rgba(232,255,71,.03);flex-shrink:0;
+}
+.act-btn{
+  background:transparent;border:1px solid var(--border);
+  border-radius:var(--rs);padding:.28rem .65rem;
+  color:var(--muted);font-family:var(--mono);font-size:.68rem;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s;
+}
+.act-btn:active{border-color:rgba(255,255,255,.2);color:var(--txt)}
+.act-btn.danger:active{border-color:var(--red);color:var(--red)}
+#global-count{font-family:var(--mono);font-size:.68rem;color:var(--acc)}
+
+.groups{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem}
+
+/* Group card */
+.gcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;animation:fadeUp .35s ease both}
+.gcard-head{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.8rem 1.1rem;cursor:pointer;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.gbadge{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;padding:.2rem .55rem;border-radius:100px;text-transform:uppercase;white-space:nowrap}
+.badge-hash{background:rgba(255,71,87,.15);color:var(--red)}
+.badge-visual{background:rgba(79,195,247,.15);color:var(--blue)}
+.badge-ai{background:rgba(179,136,255,.15);color:var(--purple)}
+.gtitle{flex:1;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gmeta{font-family:var(--mono);font-size:.68rem;color:var(--muted);white-space:nowrap}
+.gtoggle{color:var(--muted);transition:transform .2s;flex-shrink:0}
+.gcard.collapsed .gtoggle{transform:rotate(-90deg)}
+.gcard.collapsed .gimg-grid,.gcard.collapsed .gai-desc,.gcard.collapsed .gactions{display:none}
+
+.gimg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--border)}
+.img-item{position:relative;aspect-ratio:1;overflow:hidden;background:var(--surf2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.img-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.img-item.keep{outline:3px solid var(--acc);outline-offset:-3px}
+.img-item.del{outline:3px solid var(--red);outline-offset:-3px}
+.img-item.del img{filter:brightness(.55)}
+.best-tag{
+  position:absolute;top:.35rem;right:.35rem;
+  background:var(--acc);color:#0a0a0f;
+  font-family:var(--mono);font-size:.58rem;font-weight:700;
+  padding:.12rem .38rem;border-radius:4px;
+}
+.img-info{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.7));
+  padding:.4rem .4rem .35rem;
+  display:flex;flex-direction:column;gap:.1rem;
+}
+.img-name{font-family:var(--mono);font-size:.6rem;color:rgba(255,255,255,.8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.img-size{font-family:var(--mono);font-size:.56rem;color:rgba(255,255,255,.5)}
+.img-btns{
+  position:absolute;top:.35rem;left:.35rem;
+  display:flex;gap:.25rem;
+  opacity:0;transition:opacity .2s;
+}
+.img-item:hover .img-btns,.img-item.keep .img-btns,.img-item.del .img-btns{opacity:1}
+.ib{border:none;border-radius:5px;padding:.2rem .4rem;font-family:var(--mono);font-size:.6rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ib-keep{background:var(--acc);color:#0a0a0f}
+.ib-del{background:var(--redDim);color:var(--red);border:1px solid var(--red)}
+
+.gai-desc{padding:.6rem 1.1rem;font-size:.8rem;color:var(--muted);font-style:italic;background:rgba(179,136,255,.05);border-top:1px solid var(--border)}
+.gactions{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.6rem 1.1rem;border-top:1px solid var(--border)}
+.gactions .mono-lbl{flex:0 0 auto;margin-right:.1rem}
+
+.empty{display:flex;flex-direction:column;align-items:center;padding:4rem 2rem;gap:1rem;color:var(--muted);text-align:center}
+.empty-icon{font-size:2.5rem;opacity:.4}
+
+/* ══ MODAL ══ */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal.hidden{display:none}
+.mbox{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;max-width:440px;width:90%;max-height:85vh;overflow-y:auto;animation:scaleIn .18s ease}
+.mbox h3{font-size:1.1rem;margin-bottom:.65rem}
+.mbox p{color:var(--muted);font-size:.87rem;margin-bottom:.75rem}
+.mfiles{max-height:160px;overflow-y:auto;background:var(--surf2);border-radius:var(--rs);padding:.65rem;margin-bottom:1.25rem}
+.mfile{font-family:var(--mono);font-size:.7rem;color:var(--muted);padding:.15rem 0}
+.mactions{display:flex;justify-content:flex-end;gap:.65rem;flex-wrap:wrap}
+.ios-steps-modal{background:var(--surf2);border-radius:var(--rs);padding:.8rem 1rem;margin-bottom:1.25rem;font-size:.8rem;color:var(--muted)}
+.ios-steps-modal b{display:block;color:var(--txt);margin-bottom:.4rem}
+.ios-steps-modal ol{padding-left:1.1rem}
+.ios-steps-modal li{margin:.25rem 0;line-height:1.5}
+.ios-steps-modal strong{color:var(--blue)}
+
+/* ══ TOAST ══ */
+.toast{
+  position:fixed;bottom:calc(1.5rem + env(safe-area-inset-bottom));left:50%;
+  transform:translateX(-50%);
+  background:var(--surf2);border:1px solid var(--border);
+  padding:.6rem 1.25rem;border-radius:100px;
+  font-family:var(--mono);font-size:.77rem;
+  z-index:200;white-space:nowrap;animation:toastIn .25s ease;
+}
+.toast.hidden{display:none}
+.toast.ok{border-color:var(--green);color:var(--green)}
+.toast.err{border-color:var(--red);color:var(--red)}
+
+/* ══ ANIMATIONS ══ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{transform:scale(.93);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:480px){
+  .gimg-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+  .res-header{padding:.75rem 1rem}
+  .toolbar,.global-bar{padding:.55rem 1rem}
+  .groups{padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN: LANDING ══ -->
+<div id="s-land" class="screen active">
+  <div class="land-bg">
+    <div class="grid-lines"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+  </div>
+  <div class="land-body">
+    <div class="logo-icon">
+      <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+        <rect x="4" y="4" width="18" height="18" rx="3" fill="#e8ff47"/>
+        <rect x="26" y="4" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
+        <rect x="4" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
+        <rect x="26" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".3"/>
+        <path d="M15 15 L33 33" stroke="#e8ff47" stroke-width="2" stroke-dasharray="3 3"/>
+      </svg>
+    </div>
+    <h1>Foto<span class="acc">Sort</span></h1>
+    <p class="tagline">Ähnliche Bilder erkennen.<br>Das Beste behalten. Den Rest löschen.</p>
+    <div class="pills">
+      <span class="pill">⚡ Perceptual Hash</span>
+      <span class="pill">🤖 Claude KI</span>
+      <span class="pill">🗑 Löschen</span>
+    </div>
+
+    <div class="api-box">
+      <span class="mono-lbl">Anthropic API Key (optional)</span>
+      <div class="api-row">
+        <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <button class="btn-ghost" id="btn-save-key">Speichern</button>
+      </div>
+      <span id="api-status">Nur für KI-Analyse benötigt</span>
+    </div>
+
+    <!-- Injected by JS: either folder-btn or file-input-wrap -->
+    <div id="open-area"></div>
+
+    <p class="fs-note" id="fs-note"></p>
+  </div>
+</div>
+
+<!-- ══ SCREEN: SCANNING ══ -->
+<div id="s-scan" class="screen">
+  <div class="scan-wrap">
+    <div class="scan-grid-box">
+      <div class="scan-cells" id="scan-cells"></div>
+      <div class="scan-line"></div>
+    </div>
+    <h2 id="scan-title">Analyse läuft…</h2>
+    <div class="prog-track"><div class="prog-fill" id="prog"></div></div>
+    <span id="scan-status" class="mono-lbl">0 / 0</span>
+    <div id="scan-stats"></div>
+    <button class="btn-ghost" id="btn-cancel">Abbrechen</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN: RESULTS ══ -->
+<div id="s-results" class="screen">
+  <div class="res-header">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <span class="logo-sm">Foto<span class="acc">Sort</span></span>
+      <span id="hdr-stats"></span>
+    </div>
+    <div class="hdr-right">
+      <button class="btn-ghost btn-sm" id="btn-rescan">↩ Neu</button>
+      <button class="btn-danger btn-sm" id="btn-del" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        <span id="del-label">Löschen (0)</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="tab on" data-f="all">Alle</button>
+      <button class="tab" data-f="hash">Duplikate</button>
+      <button class="tab" data-f="visual">Visuell</button>
+      <button class="tab" data-f="ai">KI</button>
+    </div>
+    <div class="thresh-row">
+      <span class="mono-lbl">Schwelle</span>
+      <input type="range" id="thresh-slider" min="1" max="20" value="8"/>
+      <span id="thresh-val" class="mono-lbl">8</span>
+    </div>
+  </div>
+
+  <div class="global-bar">
+    <span class="mono-lbl" style="flex:0 0 auto">Alle sichtbaren:</span>
+    <button class="act-btn" id="btn-all-best">⭐ Bestes behalten</button>
+    <button class="act-btn danger" id="btn-all-rest">🗑 Rest markieren</button>
+    <button class="act-btn" id="btn-all-reset">✕ Reset</button>
+    <span id="global-count"></span>
+  </div>
+
+  <div class="groups" id="groups"></div>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div class="modal hidden" id="modal">
+  <div class="mbox">
+    <h3 id="m-title">Löschen</h3>
+    <p id="m-text"></p>
+    <div class="mfiles" id="m-files"></div>
+    <div id="m-ios-steps" class="ios-steps-modal" style="display:none"></div>
+    <div class="mactions">
+      <button class="btn-ghost" id="m-cancel">Abbrechen</button>
+      <button class="btn-danger" id="m-confirm" style="display:none">Ja, löschen</button>
+      <button class="btn-primary btn-sm" id="m-export" style="display:none">📋 Liste kopieren</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  PLATFORM DETECTION
+// ═══════════════════════════════════════════
+const HAS_DIR = 'showDirectoryPicker' in window;
+const IS_IOS  = /ipad|iphone|ipod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const FALLBACK = !HAS_DIR;
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const S = {
+  apiKey: localStorage.getItem('fs_key') || '',
+  handles: [],      // FileSystemFileHandle[]
+  files:   [],      // File[] (fallback)
+  imgs:    [],      // analysed image records
+  groups:  [],
+  del:     new Set(),
+  filter:  'all',
+  thresh:  8,
+  abort:   false,
+};
+
+// ═══════════════════════════════════════════
+//  SCREEN SWITCH  ← single source of truth
+// ═══════════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    const on = s.id === id;
+    s.classList.toggle('active', on);
+  });
+  // force scroll to top on results
+  if (id === 's-results') {
+    const el = document.getElementById('groups');
+    if (el) el.scrollTop = 0;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+(function init() {
+  // restore api key
+  if (S.apiKey) {
+    document.getElementById('api-key').value = S.apiKey;
+    setApiStatus('✓ Gespeichert', true);
+  }
+
+  // build open-area based on platform
+  const area = document.getElementById('open-area');
+  const note  = document.getElementById('fs-note');
+
+  if (FALLBACK) {
+    // iOS / Safari
+    area.innerHTML = `
+      <div class="mode-badge mode-ios" style="margin-bottom:.25rem">📱 iOS/Safari Modus</div>
+      <div class="file-input-wrap">
+        <input type="file" id="file-in" accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif" multiple/>
+        <div class="btn-visual">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+          </svg>
+          Bilder auswählen
+        </div>
+      </div>
+      <div class="ios-tip">
+        <div class="ios-tip-title">💡 Viele Bilder auswählen</div>
+        <ol>
+          <li>Auf „Bilder auswählen" tippen</li>
+          <li>Im Picker: erstes Foto antippen &amp; <strong>wischen</strong> für Mehrfachauswahl</li>
+          <li>Oder: lang gedrückt halten, dann weitere antippen</li>
+        </ol>
+        <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ (Löschliste wird exportiert)</div>
+      </div>`;
+    note.textContent = '';
+    document.getElementById('file-in').addEventListener('change', onFileInput);
+  } else {
+    // Desktop Chrome/Edge
+    area.innerHTML = `
+      <div class="mode-badge mode-desktop" style="margin-bottom:.25rem">🖥 Desktop Modus – echtes Löschen ✓</div>
+      <button class="btn-primary" id="btn-folder">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        Ordner öffnen
+      </button>`;
+    note.textContent = 'Benötigt Chrome / Edge';
+    document.getElementById('btn-folder').addEventListener('click', onOpenFolder);
+  }
+
+  // init scan cells
+  const cellBox = document.getElementById('scan-cells');
+  for (let i = 0; i < 25; i++) {
+    const c = document.createElement('div');
+    c.className = 'scell';
+    cellBox.appendChild(c);
+  }
+})();
+
+// ═══════════════════════════════════════════
+//  BUTTON WIRING
+// ═══════════════════════════════════════════
+document.getElementById('btn-save-key').addEventListener('click', saveApiKey);
+document.getElementById('btn-cancel').addEventListener('click', () => { S.abort = true; show('s-land'); });
+document.getElementById('btn-rescan').addEventListener('click', resetAll);
+document.getElementById('btn-del').addEventListener('click', openModal);
+document.getElementById('m-cancel').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
+document.getElementById('m-confirm').addEventListener('click', execDelete);
+document.getElementById('m-export').addEventListener('click', exportList);
+document.getElementById('thresh-slider').addEventListener('input', e => {
+  S.thresh = +e.target.value;
+  document.getElementById('thresh-val').textContent = e.target.value;
+  recompute();
+});
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  b.classList.add('on');
+  S.filter = b.dataset.f;
+  renderGroups();
+}));
+document.getElementById('btn-all-best').addEventListener('click',  () => globalAct('best'));
+document.getElementById('btn-all-rest').addEventListener('click',  () => globalAct('rest'));
+document.getElementById('btn-all-reset').addEventListener('click', () => globalAct('reset'));
+
+// ═══════════════════════════════════════════
+//  API KEY
+// ═══════════════════════════════════════════
+function saveApiKey() {
+  const v = document.getElementById('api-key').value.trim();
+  if (v.startsWith('sk-')) {
+    S.apiKey = v;
+    localStorage.setItem('fs_key', v);
+    setApiStatus('✓ Gespeichert', true);
+    toast('API Key gespeichert', 'ok');
+  } else {
+    toast('Ungültiger Key', 'err');
+  }
+}
+function setApiStatus(txt, ok) {
+  const el = document.getElementById('api-status');
+  el.textContent = txt;
+  el.className = ok ? 'ok' : '';
+}
+
+// ═══════════════════════════════════════════
+//  FILE LOADING
+// ═══════════════════════════════════════════
+async function onOpenFolder() {
+  try {
+    const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+    S.handles = []; S.imgs = []; S.groups = []; S.del.clear();
+    await collectDir(dir, S.handles);
+    if (!S.handles.length) { toast('Keine Bilder gefunden', 'err'); return; }
+    show('s-scan');
+    await runDesktop();
+  } catch(e) {
+    if (e.name !== 'AbortError') toast('Fehler: ' + e.message, 'err');
+  }
+}
+
+async function collectDir(dir, list, depth=0) {
+  if (depth > 3) return;
+  for await (const [,e] of dir) {
+    if (e.kind === 'file' && /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(e.name))
+      list.push(e);
+    else if (e.kind === 'directory')
+      await collectDir(e, list, depth+1);
+  }
+}
+
+async function onFileInput(e) {
+  const files = [...e.target.files].filter(f => f.type.startsWith('image/'));
+  if (!files.length) { toast('Keine Bilder ausgewählt', 'err'); return; }
+  S.files = files; S.imgs = []; S.groups = []; S.del.clear();
+  show('s-scan');
+  await runFallback(files);
+}
+
+// ═══════════════════════════════════════════
+//  ANALYSIS PIPELINES
+// ═══════════════════════════════════════════
+async function runDesktop() {
+  S.abort = false;
+  const total = S.handles.length;
+  setProgress(0); setScanStatus(`0 / ${total}`); setScanTitle('Bilder laden…');
+  for (let i = 0; i < total; i++) {
+    if (S.abort) return;
+    try {
+      const file = await S.handles[i].getFile();
+      const sig  = await signature(file);
+      const exif = await exifDate(file);
+      S.imgs.push({ handle: S.handles[i], file, ...sig, exif, name: file.name, size: file.size });
+      litCell(i % 25);
+    } catch(e) { console.warn(e); }
+    setProgress((i+1)/total*60);
+    setScanStatus(`${i+1} / ${total}`);
+    await tick();
+  }
+  await finish();
+}
+
+async function runFallback(files) {
+  S.abort = false;
+  const total = files.length;
+  setProgress(0); setScanStatus(`0 / ${total}`); setScanTitle('Bilder laden…');
+  for (let i = 0; i < total; i++) {
+    if (S.abort) return;
+    try {
+      const sig  = await signature(files[i]);
+      const exif = await exifDate(files[i]);
+      S.imgs.push({ handle: null, file: files[i], ...sig, exif, name: files[i].name, size: files[i].size });
+      litCell(i % 25);
+    } catch(e) { console.warn(e); }
+    setProgress((i+1)/total*60);
+    setScanStatus(`${i+1} / ${total}`);
+    await tick();
+  }
+  await finish();
+}
+
+async function finish() {
+  setScanTitle('Ähnlichkeiten berechnen…');
+  const hg = groupHash(S.imgs);
+  const vg = groupVisual(S.imgs, S.thresh);
+  setProgress(80);
+  document.getElementById('scan-stats').textContent =
+    `${hg.length} Duplikat-Gruppen · ${vg.length} visuelle Gruppen`;
+
+  let ag = [];
+  if (S.apiKey && S.imgs.length > 1) {
+    setScanTitle('Claude KI analysiert…');
+    ag = await aiGroup(S.imgs.slice(0, 50));
+  }
+  setProgress(100);
+  S.groups = merge(hg, vg, ag);
+  S.groups.sort((a,b) => b.images.length - a.images.length);
+  await tick();
+  renderAll();
+  show('s-results');
+}
+
+// ═══════════════════════════════════════════
+//  IMAGE SIGNATURE (hash + color vec + thumb)
+// ═══════════════════════════════════════════
+function signature(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const W = 32;
+        const c = document.createElement('canvas');
+        c.width = c.height = W;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, W, W);
+        const d = ctx.getImageData(0, 0, W, W).data;
+
+        // avg hash
+        const gray = [];
+        for (let i = 0; i < d.length; i += 4)
+          gray.push(.299*d[i] + .587*d[i+1] + .114*d[i+2]);
+        const avg = gray.reduce((a,b)=>a+b,0)/gray.length;
+        const hash = gray.map(g => g >= avg ? 1 : 0);
+
+        // color vec (4×4 grid, RGB avg per block)
+        const col = [], step = W/4;
+        for (let by=0; by<4; by++) for (let bx=0; bx<4; bx++) {
+          let r=0,g=0,b=0,n=0;
+          for (let y=by*step; y<(by+1)*step; y++)
+            for (let x=bx*step; x<(bx+1)*step; x++) {
+              const ix=(y*W+x)*4; r+=d[ix]; g+=d[ix+1]; b+=d[ix+2]; n++;
+            }
+          col.push(r/n, g/n, b/n);
+        }
+
+        // thumb 64px
+        const tc = document.createElement('canvas');
+        tc.width = tc.height = 64;
+        tc.getContext('2d').drawImage(img, 0, 0, 64, 64);
+        const thumb = tc.toDataURL('image/jpeg', .5);
+
+        URL.revokeObjectURL(url);
+        res({ hash, col, thumb });
+      } catch(e) { rej(e); }
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+// ═══════════════════════════════════════════
+//  EXIF DATE
+// ═══════════════════════════════════════════
+async function exifDate(file) {
+  try {
+    const buf = await file.slice(0, 65536).arrayBuffer();
+    const s = new TextDecoder('ascii',{fatal:false}).decode(buf);
+    const m = s.match(/(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/);
+    if (m) return new Date(m[1].replace(/^(\d{4}):(\d{2}):(\d{2})/,'$1-$2-$3'));
+  } catch {}
+  return null;
+}
+
+// ═══════════════════════════════════════════
+//  GROUPING
+// ═══════════════════════════════════════════
+function hamming(a,b) { let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d; }
+function colDist(a,b) { let s=0; for(let i=0;i<a.length;i++) s+=Math.abs(a[i]-b[i]); return s/a.length; }
+
+function groupHash(imgs) {
+  const groups=[], used=new Set();
+  for (let i=0;i<imgs.length;i++) {
+    if (used.has(i)) continue;
+    const g=[imgs[i]];
+    for (let j=i+1;j<imgs.length;j++) {
+      if (!used.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=2) { g.push(imgs[j]); used.add(j); }
+    }
+    if (g.length>1) { used.add(i); groups.push({type:'hash',images:g}); }
+  }
+  return groups;
+}
+
+function groupVisual(imgs, thresh) {
+  const groups=[], used=new Set();
+  for (let i=0;i<imgs.length;i++) {
+    if (used.has(i)) continue;
+    const g=[imgs[i]], sc=[{img:imgs[i],score:0}];
+    for (let j=i+1;j<imgs.length;j++) {
+      if (used.has(j)) continue;
+      const hd=hamming(imgs[i].hash,imgs[j].hash);
+      const cd=colDist(imgs[i].col,imgs[j].col);
+      const combined=hd+cd*.5;
+      if (hd>2 && combined<=thresh) { g.push(imgs[j]); sc.push({img:imgs[j],score:Math.round(combined)}); used.add(j); }
+    }
+    if (g.length>1) { used.add(i); groups.push({type:'visual',images:g,scores:sc}); }
+  }
+  return groups;
+}
+
+function merge(hg, vg, ag) {
+  const inHash=new Set(hg.flatMap(g=>g.images.map(i=>i.name)));
+  const fv=vg.map(g=>({...g,images:g.images.filter(i=>!inHash.has(i.name))})).filter(g=>g.images.length>1);
+  const inAny=new Set([...hg,...fv].flatMap(g=>g.images.map(i=>i.name)));
+  const fa=ag.map(g=>({...g,images:g.images.filter(i=>!inAny.has(i.name))})).filter(g=>g.images.length>1);
+  return [...hg,...fv,...fa];
+}
+
+// ═══════════════════════════════════════════
+//  AI GROUPING
+// ═══════════════════════════════════════════
+async function aiGroup(imgs) {
+  if (!S.apiKey || imgs.length<2) return [];
+  const batchSize=10, all=[];
+  for (let i=0;i<imgs.length;i+=batchSize) {
+    if (S.abort) break;
+    const batch=imgs.slice(i,i+batchSize);
+    const g=await claudeBatch(batch);
+    all.push(...g);
+    setProgress(80+(i/imgs.length)*18);
+  }
+  return all;
+}
+
+async function claudeBatch(imgs) {
+  try {
+    const content=[{type:'text',text:`Du bist ein Bildanalyst. Gruppiere Bilder mit ähnlichem Motiv/Person/Ort.
+Antworte NUR mit JSON-Array (kein Markdown):
+[{"indices":[0,2],"description":"kurze Beschreibung"}]
+Nur Gruppen mit 2+ Bildern. Keine Gruppen → [].`}];
+    imgs.forEach((img,i)=>{
+      content.push({type:'text',text:`Bild ${i} (${img.name}):`});
+      content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:img.thumb.split(',')[1]}});
+    });
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content}]})
+    });
+    if(!r.ok) throw new Error(r.status);
+    const data=await r.json();
+    const text=data.content.find(b=>b.type==='text')?.text||'[]';
+    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    return parsed.filter(g=>g.indices?.length>=2).map(g=>({
+      type:'ai',aiDesc:g.description,images:g.indices.map(idx=>imgs[idx]).filter(Boolean)
+    }));
+  } catch(e) { console.warn('AI fail',e); return []; }
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function renderAll() {
+  const total=S.imgs.length;
+  const grouped=new Set(S.groups.flatMap(g=>g.images.map(i=>i.name)));
+  document.getElementById('hdr-stats').textContent=
+    `${total} Bilder · ${S.groups.length} Gruppen · ${grouped.size} betroffen`;
+  renderGroups();
+}
+
+function renderGroups() {
+  const box=document.getElementById('groups');
+  box.innerHTML='';
+  const visible=S.groups.filter(g=>S.filter==='all'||g.type===S.filter);
+  if (!visible.length) {
+    box.innerHTML='<div class="empty"><div class="empty-icon">✨</div><p>Keine Gruppen gefunden</p></div>';
+    updateDelBtn(); return;
+  }
+  visible.forEach((g,gi)=>box.appendChild(buildCard(g,gi)));
+  updateDelBtn();
+}
+
+function buildCard(g, gi) {
+  const card=document.createElement('div');
+  card.className='gcard';
+  const bc={hash:'badge-hash',visual:'badge-visual',ai:'badge-ai'}[g.type];
+  const bl={hash:'Duplikat',visual:'Visuell',ai:'KI'}[g.type];
+  const best=g.images.reduce((a,b)=>b.size>a.size?b:a,g.images[0]);
+
+  const head=document.createElement('div');
+  head.className='gcard-head';
+  head.innerHTML=`
+    <span class="gbadge ${bc}">${bl}</span>
+    <span class="gtitle">${g.aiDesc||g.images.map(i=>i.name).join(', ').substring(0,50)}</span>
+    <span class="gmeta">${g.images.length} Bilder</span>
+    <span class="gtoggle">▼</span>`;
+  head.addEventListener('click', ()=>card.classList.toggle('collapsed'));
+  card.appendChild(head);
+
+  const grid=document.createElement('div');
+  grid.className='gimg-grid';
+  g.images.forEach(img=>{
+    const item=document.createElement('div');
+    item.className='img-item' + (S.del.has(img.name)?' del':img.name===best.name?' keep':'');
+    item.innerHTML=`
+      <img src="${img.thumb}" alt="${img.name}" loading="lazy"/>
+      ${img.name===best.name?'<div class="best-tag">BEST</div>':''}
+      <div class="img-info">
+        <span class="img-name">${img.name}</span>
+        <span class="img-size">${fmtSize(img.size)}</span>
+      </div>
+      <div class="img-btns">
+        <button class="ib ib-keep">✓</button>
+        <button class="ib ib-del">✕</button>
+      </div>`;
+    item.querySelector('.ib-keep').addEventListener('click', e=>{
+      e.stopPropagation(); keepOne(g, img.name); renderGroups();
+    });
+    item.querySelector('.ib-del').addEventListener('click', e=>{
+      e.stopPropagation(); toggleDel(img.name); renderGroups();
+    });
+    grid.appendChild(item);
+  });
+  card.appendChild(grid);
+
+  if (g.aiDesc) {
+    const desc=document.createElement('div');
+    desc.className='gai-desc';
+    desc.textContent='🤖 ' + g.aiDesc;
+    card.appendChild(desc);
+  }
+
+  const acts=document.createElement('div');
+  acts.className='gactions';
+  acts.innerHTML=`
+    <span class="mono-lbl">Schnell:</span>
+    <button class="act-btn" data-a="best">⭐ Bestes behalten</button>
+    <button class="act-btn danger" data-a="rest">🗑 Rest löschen</button>
+    <button class="act-btn" data-a="reset">✕ Reset</button>`;
+  acts.querySelectorAll('.act-btn').forEach(b=>b.addEventListener('click', ()=>{
+    const a=b.dataset.a;
+    if (a==='best'||a==='rest') keepBest(g);
+    if (a==='reset') resetGroup(g);
+    renderGroups();
+  }));
+  card.appendChild(acts);
+  return card;
+}
+
+// ═══════════════════════════════════════════
+//  SELECTION LOGIC
+// ═══════════════════════════════════════════
+function keepOne(g, name) {
+  g.images.forEach(i=>{ if(i.name===name) S.del.delete(i.name); else S.del.add(i.name); });
+}
+function keepBest(g) {
+  const best=g.images.reduce((a,b)=>b.size>a.size?b:a,g.images[0]);
+  keepOne(g, best.name);
+}
+function resetGroup(g) { g.images.forEach(i=>S.del.delete(i.name)); }
+function toggleDel(name) { S.del.has(name)?S.del.delete(name):S.del.add(name); }
+
+function globalAct(type) {
+  const visible=S.groups.filter(g=>S.filter==='all'||g.type===S.filter);
+  visible.forEach(g=>{
+    if (type==='best'||type==='rest') keepBest(g);
+    if (type==='reset') resetGroup(g);
+  });
+  renderGroups();
+  const n=S.del.size;
+  toast(type==='reset'?'Auswahl zurückgesetzt':`${n} Bilder markiert`, type==='reset'?'':'ok');
+}
+
+function updateDelBtn() {
+  const n=S.del.size;
+  document.getElementById('del-label').textContent = FALLBACK?`Löschliste (${n})`:`Löschen (${n})`;
+  document.getElementById('btn-del').disabled = n===0;
+  const gc=document.getElementById('global-count');
+  gc.textContent = n>0?`${n} markiert`:'';
+}
+
+// ═══════════════════════════════════════════
+//  RECOMPUTE ON THRESHOLD
+// ═══════════════════════════════════════════
+function recompute() {
+  const hg=S.groups.filter(g=>g.type==='hash');
+  const ag=S.groups.filter(g=>g.type==='ai');
+  const inH=new Set(hg.flatMap(g=>g.images.map(i=>i.name)));
+  const vg=groupVisual(S.imgs,S.thresh)
+    .map(g=>({...g,images:g.images.filter(i=>!inH.has(i.name))}))
+    .filter(g=>g.images.length>1);
+  S.groups=[...hg,...vg,...ag];
+  S.groups.sort((a,b)=>b.images.length-a.images.length);
+  renderAll();
+}
+
+// ═══════════════════════════════════════════
+//  DELETE / EXPORT
+// ═══════════════════════════════════════════
+function openModal() {
+  const list=[...S.del];
+  document.getElementById('m-files').innerHTML=list.map(n=>`<div class="mfile">🗑 ${n}</div>`).join('');
+  const steps=document.getElementById('m-ios-steps');
+  const confirm=document.getElementById('m-confirm');
+  const exportBtn=document.getElementById('m-export');
+  if (FALLBACK) {
+    document.getElementById('m-title').textContent='Löschliste';
+    document.getElementById('m-text').innerHTML=`<strong>${list.length}</strong> Bilder zum Löschen markiert.<br>Exportiere die Liste und lösche sie manuell in der Fotos-App.`;
+    steps.style.display='block';
+    steps.innerHTML=`<b>So löscht du auf iOS:</b><ol>
+      <li>Öffne die <strong>Fotos</strong>-App</li>
+      <li>Tippe oben rechts auf <strong>Auswählen</strong></li>
+      <li>Wähle die Bilder aus der Liste aus</li>
+      <li>Tippe auf das <strong>Papierkorb</strong>-Symbol</li></ol>`;
+    confirm.style.display='none';
+    exportBtn.style.display='flex';
+  } else {
+    document.getElementById('m-title').textContent='Dateien löschen';
+    document.getElementById('m-text').innerHTML=`Möchtest du <strong>${list.length}</strong> Dateien wirklich permanent löschen?`;
+    steps.style.display='none';
+    confirm.style.display='flex';
+    exportBtn.style.display='none';
+  }
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function execDelete() {
+  document.getElementById('modal').classList.add('hidden');
+  const list=[...S.del];
+  let ok=0, fail=0;
+  for (const name of list) {
+    const rec=S.imgs.find(i=>i.name===name);
+    if (!rec?.handle) continue;
+    try { await rec.handle.remove(); ok++; S.del.delete(name); S.imgs=S.imgs.filter(i=>i.name!==name); }
+    catch(e) { console.error(e); fail++; }
+  }
+  S.groups=S.groups.map(g=>({...g,images:g.images.filter(i=>!list.includes(i.name))})).filter(g=>g.images.length>1);
+  toast(`${ok} gelöscht${fail?`, ${fail} Fehler`:''}`, ok>0?'ok':'err');
+  renderAll();
+}
+
+function exportList() {
+  const list=[...S.del];
+  const txt=`FotoSort – Löschliste\n${new Date().toLocaleString('de')}\n\n${list.length} Bilder:\n\n`+list.map((n,i)=>`${i+1}. ${n}`).join('\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(()=>{ toast('In Zwischenablage kopiert','ok'); document.getElementById('modal').classList.add('hidden'); }).catch(()=>dlList(txt));
+  } else dlList(txt);
+}
+function dlList(txt) {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
+  a.download='fotosort-loeschliste.txt'; a.click();
+  document.getElementById('modal').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════
+//  SCAN UI HELPERS
+// ═══════════════════════════════════════════
+function setProgress(p) { document.getElementById('prog').style.width=p+'%'; }
+function setScanStatus(t) { document.getElementById('scan-status').textContent=t; }
+function setScanTitle(t) { document.getElementById('scan-title').textContent=t; }
+function litCell(i) {
+  const cells=document.querySelectorAll('.scell');
+  cells[i]?.classList.add('lit');
+  setTimeout(()=>cells[i]?.classList.remove('lit'), 350);
+}
+function tick() { return new Promise(r=>setTimeout(r,0)); }
+
+// ═══════════════════════════════════════════
+//  MISC
+// ═══════════════════════════════════════════
+function fmtSize(b) {
+  if(b<1024) return b+'B';
+  if(b<1048576) return (b/1024).toFixed(0)+'KB';
+  return (b/1048576).toFixed(1)+'MB';
+}
+let _tt;
+function toast(msg, type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+type;
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.add('hidden'),3000);
+}
+function resetAll() {
+  S.handles=[]; S.files=[]; S.imgs=[]; S.groups=[]; S.del.clear();
+  show('s-land');
+}
+
+// Service Worker
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

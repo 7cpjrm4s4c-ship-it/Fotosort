@@ -1,0 +1,24 @@
+{
+  "name": "FotoSort – Ähnliche Bilder finden",
+  "short_name": "FotoSort",
+  "description": "Erkennt ähnliche und doppelte Bilder in deiner Foto-Galerie",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
