@@ -225,7 +225,8 @@ h1 .acc{color:var(--acc)}
 .groups{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem}
 
 /* Group card */
-.gcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;animation:fadeUp .35s ease both}
+.gcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+/* No animation on cards – iOS can't handle 29 simultaneous fadeUp animations */
 .gcard-head{
   display:flex;align-items:center;gap:.75rem;
   padding:.8rem 1.1rem;cursor:pointer;user-select:none;
@@ -264,9 +265,8 @@ h1 .acc{color:var(--acc)}
 .img-btns{
   position:absolute;top:.35rem;left:.35rem;
   display:flex;gap:.25rem;
-  opacity:0;transition:opacity .2s;
+  opacity:1; /* always visible on touch – no hover on iOS */
 }
-.img-item:hover .img-btns,.img-item.keep .img-btns,.img-item.del .img-btns{opacity:1}
 .ib{border:none;border-radius:5px;padding:.2rem .4rem;font-family:var(--mono);font-size:.6rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ib-keep{background:var(--acc);color:#0a0a0f}
 .ib-del{background:var(--redDim);color:var(--red);border:1px solid var(--red)}
