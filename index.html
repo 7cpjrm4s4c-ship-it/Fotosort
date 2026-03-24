@@ -348,12 +348,12 @@ h1 .acc{color:var(--acc)}
     </div>
 
     <div class="api-box">
-      <span class="mono-lbl">Anthropic API Key (optional)</span>
+      <span class="mono-lbl">Anthropic API Key <span style="color:var(--acc)">← erforderlich</span></span>
       <div class="api-row">
-        <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <input type="password" id="api-key" placeholder="sk-ant-…" autocomplete="off" autocorrect="off" spellcheck="false"/>
         <button class="btn-ghost" id="btn-save-key">Speichern</button>
       </div>
-      <span id="api-status">Nur für KI-Analyse benötigt</span>
+      <span id="api-status">Claude analysiert deine Bilder – kein lokales Rechnen nötig</span>
     </div>
 
     <!-- Injected by JS: either folder-btn or file-input-wrap -->
@@ -695,32 +695,56 @@ async function analyseFile(file, handle = null) {
 
 async function finish() {
   const n = S.imgs.length;
-  setScanTitle('Duplikate suchen…');
-  setScanStatus(`${n} Bilder · ${Math.round(n*(n-1)/2).toLocaleString()} Vergleiche`);
-  setProgress(62); await tick();
 
-  const {hg, vg} = await runWorker(S.imgs, S.thresh);
-  setProgress(90);
-  setScanStats(`${hg.length} Duplikat · ${vg.length} visuelle Gruppen`);
-  await tick();
-
-  let ag = [];
-  if (S.apiKey && S.imgs.length > 1) {
-    setScanTitle('Claude KI analysiert…');
-    ag = await aiGroup(S.imgs.slice(0, 50));
+  if (!S.apiKey) {
+    // No API key – show message and go back
+    show('s-land');
+    setTimeout(() => {
+      document.getElementById('api-key').focus();
+      toast('Bitte zuerst einen Anthropic API Key eingeben', 'err');
+    }, 300);
+    return;
   }
+
+  setScanTitle('Claude analysiert Bilder…');
+  setScanStatus(`${n} Bilder werden an Claude gesendet`);
+  setProgress(65); await tick();
+
+  // Send all images to Claude in batches of 12
+  // Claude groups them by visual similarity, scene, person, location
+  const BATCH = 12;
+  const allGroups = [];
+  const usedNames = new Set();
+
+  for (let i = 0; i < S.imgs.length; i += BATCH) {
+    if (S.abort) return;
+    const batch = S.imgs.slice(i, Math.min(i + BATCH, S.imgs.length));
+    setScanTitle(`Claude analysiert… (${i+1}–${Math.min(i+BATCH, n)} / ${n})`);
+    setProgress(65 + (i / n) * 30);
+    await tick();
+
+    const groups = await claudeAnalyse(batch, i);
+    // Only keep groups where images haven't been claimed by earlier batches
+    for (const g of groups) {
+      const fresh = g.images.filter(img => !usedNames.has(img.name));
+      if (fresh.length >= 2) {
+        fresh.forEach(img => usedNames.add(img.name));
+        allGroups.push({ ...g, images: fresh });
+      }
+    }
+  }
+
   setProgress(100);
-  S.groups = merge(hg, vg, ag);
-  S.groups.sort((a,b) => b.images.length - a.images.length);
+  S.groups = allGroups;
+  S.groups.sort((a, b) => b.images.length - a.images.length);
   await tick();
   renderAll();
   show('s-results');
 }
 
 // ═══════════════════════════════════════════
-//  IMAGE SIGNATURE – optimised single-pass
-//  One canvas draw at 32×32, derive dHash +
-//  histogram + thumbnail all from same pixels
+//  THUMBNAIL GENERATION
+//  Only thumbnails needed – Claude does analysis
 // ═══════════════════════════════════════════
 function signature(file) {
   return new Promise((res, rej) => {
@@ -728,45 +752,18 @@ function signature(file) {
     const img = new Image();
     img.onload = () => {
       try {
-        // Single canvas at 32×32 – enough for all three computations
-        const W = 32;
+        // 128px thumbnail for Claude – good quality/size balance
+        const SIZE = 128;
         const c = document.createElement('canvas');
-        c.width = W; c.height = W;
-        const ctx = c.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0, W, W);
-        const d = ctx.getImageData(0, 0, W, W).data;
-
-        // ── dHash from top 8 rows, 9 cols each → 64 bits ──
-        const hash = [];
-        for (let y = 0; y < 8; y++) {
-          for (let x = 0; x < 8; x++) {
-            const i1 = (y * W + x) * 4;
-            const i2 = (y * W + x + 1) * 4;
-            const g1 = .299*d[i1] + .587*d[i1+1] + .114*d[i1+2];
-            const g2 = .299*d[i2] + .587*d[i2+1] + .114*d[i2+2];
-            hash.push(g1 > g2 ? 1 : 0);
-          }
-        }
-
-        // ── Color histogram from same pixels ──
-        const BINS = 8;
-        const hist = new Float32Array(BINS * 3);
-        const total = W * W;
-        for (let i = 0; i < d.length; i += 4) {
-          hist[Math.floor(d[i]   / 32)]          += 1;
-          hist[BINS   + Math.floor(d[i+1] / 32)] += 1;
-          hist[BINS*2 + Math.floor(d[i+2] / 32)] += 1;
-        }
-        for (let i = 0; i < hist.length; i++) hist[i] /= total;
-
-        // ── Thumbnail: reuse same canvas, upscale to 80px ──
-        const tc = document.createElement('canvas');
-        tc.width = tc.height = 80;
-        tc.getContext('2d').drawImage(c, 0, 0, 80, 80);
-        const thumb = tc.toDataURL('image/jpeg', .5);
-
+        // Maintain aspect ratio
+        const ratio = img.width / img.height;
+        c.width  = ratio >= 1 ? SIZE : Math.round(SIZE * ratio);
+        c.height = ratio >= 1 ? Math.round(SIZE / ratio) : SIZE;
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const thumb = c.toDataURL('image/jpeg', 0.7);
         URL.revokeObjectURL(url);
-        res({ hash, col: Array.from(hist), thumb });
+        // Return stub hash/col so rest of code doesn't break
+        res({ hash: [], col: [], thumb });
       } catch(e) { URL.revokeObjectURL(url); rej(e); }
     };
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load')); };
@@ -927,42 +924,77 @@ function merge(hg, vg, ag) {
 // ═══════════════════════════════════════════
 //  AI GROUPING
 // ═══════════════════════════════════════════
-async function aiGroup(imgs) {
-  if (!S.apiKey || imgs.length<2) return [];
-  const batchSize=10, all=[];
-  for (let i=0;i<imgs.length;i+=batchSize) {
-    if (S.abort) break;
-    const batch=imgs.slice(i,i+batchSize);
-    const g=await claudeBatch(batch);
-    all.push(...g);
-    setProgress(80+(i/imgs.length)*18);
-  }
-  return all;
-}
-
-async function claudeBatch(imgs) {
+// ═══════════════════════════════════════════
+//  CLAUDE API ANALYSIS
+//  Sends thumbnails to Claude, gets back groups
+// ═══════════════════════════════════════════
+async function claudeAnalyse(imgs, offset = 0) {
   try {
-    const content=[{type:'text',text:`Du bist ein Bildanalyst. Gruppiere Bilder mit ähnlichem Motiv/Person/Ort.
-Antworte NUR mit JSON-Array (kein Markdown):
-[{"indices":[0,2],"description":"kurze Beschreibung"}]
-Nur Gruppen mit 2+ Bildern. Keine Gruppen → [].`}];
-    imgs.forEach((img,i)=>{
-      content.push({type:'text',text:`Bild ${i} (${img.name}):`});
-      content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:img.thumb.split(',')[1]}});
+    const content = [{
+      type: 'text',
+      text: `Du analysierst ${imgs.length} Fotos aus einer Galerie.
+
+Aufgabe: Finde Fotos die zusammengehören – gleiche Szene, gleicher Moment, ähnliches Motiv, gleiche Person, gleicher Ort, Burst-Aufnahmen, Belichtungsreihen, oder fast identische Bilder.
+
+Antworte NUR mit einem JSON-Array, kein Markdown, keine Erklärung außerhalb des JSON:
+[
+  {"indices": [0, 2, 5], "type": "duplicate", "description": "Fast identische Aufnahmen"},
+  {"indices": [1, 3], "type": "similar", "description": "Gleiche Person, verschiedene Posen"}
+]
+
+type ist: "duplicate" (fast identisch), "similar" (ähnlich/gleiche Szene), "burst" (Schnellaufnahmen).
+Nur Gruppen mit 2+ Bildern. Keine Gruppen gefunden → [].`
+    }];
+
+    imgs.forEach((img, i) => {
+      content.push({ type: 'text', text: `Foto ${i} – ${img.name} (${fmtSize(img.size)}):` });
+      content.push({
+        type: 'image',
+        source: { type: 'base64', media_type: 'image/jpeg', data: img.thumb.split(',')[1] }
+      });
     });
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content}]})
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': S.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content }]
+      })
     });
-    if(!r.ok) throw new Error(r.status);
-    const data=await r.json();
-    const text=data.content.find(b=>b.type==='text')?.text||'[]';
-    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
-    return parsed.filter(g=>g.indices?.length>=2).map(g=>({
-      type:'ai',aiDesc:g.description,images:g.indices.map(idx=>imgs[idx]).filter(Boolean)
-    }));
-  } catch(e) { console.warn('AI fail',e); return []; }
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`API ${resp.status}: ${err}`);
+    }
+
+    const data = await resp.json();
+    const text = data.content.find(b => b.type === 'text')?.text || '[]';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    const typeMap = { duplicate: 'hash', similar: 'visual', burst: 'hash' };
+
+    return parsed
+      .filter(g => Array.isArray(g.indices) && g.indices.length >= 2)
+      .map(g => ({
+        type: typeMap[g.type] || 'ai',
+        aiDesc: g.description,
+        images: g.indices.map(idx => imgs[idx]).filter(Boolean)
+      }))
+      .filter(g => g.images.length >= 2);
+
+  } catch (e) {
+    console.warn('Claude API error:', e);
+    toast('API Fehler: ' + e.message, 'err');
+    return [];
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1091,16 +1123,9 @@ function updateDelBtn() {
 //  RECOMPUTE ON THRESHOLD
 // ═══════════════════════════════════════════
 async function recompute() {
-  const hgOld = S.groups.filter(g=>g.type==='hash');
-  const ag    = S.groups.filter(g=>g.type==='ai');
-  const inH   = new Set(hgOld.flatMap(g=>g.images.map(i=>i.name)));
-  const {vg}  = await runWorker(S.imgs, S.thresh);
-  const vgFiltered = vg
-    .map(g=>({...g, images:g.images.filter(i=>!inH.has(i.name))}))
-    .filter(g=>g.images.length>1);
-  S.groups = [...hgOld, ...vgFiltered, ...ag];
-  S.groups.sort((a,b)=>b.images.length-a.images.length);
-  renderAll();
+  // With Claude-API mode, re-running analysis is the only option
+  // Just re-trigger finish with current images
+  await finish();
 }
 
 // ═══════════════════════════════════════════
@@ -1116,11 +1141,11 @@ function openModal() {
     document.getElementById('m-title').textContent='Löschliste';
     document.getElementById('m-text').innerHTML=`<strong>${list.length}</strong> Bilder zum Löschen markiert.<br>Exportiere die Liste und lösche sie manuell in der Fotos-App.`;
     steps.style.display='block';
-    steps.innerHTML=`<b>So löscht du auf iOS:</b><ol>
-      <li>Öffne die <strong>Fotos</strong>-App</li>
-      <li>Tippe oben rechts auf <strong>Auswählen</strong></li>
-      <li>Wähle die Bilder aus der Liste aus</li>
-      <li>Tippe auf das <strong>Papierkorb</strong>-Symbol</li></ol>`;
+    steps.innerHTML=`<b>Workflow mit Kurzbefehl (empfohlen):</b><ol>
+      <li>Auf <strong>„Liste kopieren"</strong> tippen</li>
+      <li>Kurzbefehl <strong>„FotoSort Löschen"</strong> öffnen</li>
+      <li>Shortcut liest die Liste und löscht automatisch</li></ol>
+      <div style="margin-top:.5rem;font-size:.75rem;opacity:.6">Kurzbefehl noch nicht installiert? Siehe Anleitung auf GitHub.</div>`;
     confirm.style.display='none';
     exportBtn.style.display='flex';
   } else {
@@ -1149,11 +1174,24 @@ async function execDelete() {
 }
 
 function exportList() {
-  const list=[...S.del];
-  const txt=`FotoSort – Löschliste\n${new Date().toLocaleString('de')}\n\n${list.length} Bilder:\n\n`+list.map((n,i)=>`${i+1}. ${n}`).join('\n');
+  const list = [...S.del];
+  // Plain filenames only, one per line – perfect for iOS Shortcuts to parse
+  const plain = list.join('\n');
+  // Also prepare a readable version
+  const readable = `FotoSort Löschliste\n${new Date().toLocaleString('de-DE')}\n${list.length} Bilder\n\n` + plain;
+
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(()=>{ toast('In Zwischenablage kopiert','ok'); document.getElementById('modal').classList.add('hidden'); }).catch(()=>dlList(txt));
-  } else dlList(txt);
+    navigator.clipboard.writeText(plain)
+      .then(() => {
+        toast('Dateinamen kopiert – jetzt Shortcut öffnen!', 'ok');
+        document.getElementById('modal').classList.add('hidden');
+        // Show shortcut launch hint
+        setTimeout(() => toast('👉 Öffne: „FotoSort Löschen" in der Kurzbefehl-App', ''), 2500);
+      })
+      .catch(() => dlList(readable));
+  } else {
+    dlList(readable);
+  }
 }
 function dlList(txt) {
   const a=document.createElement('a');
