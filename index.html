@@ -225,12 +225,16 @@ h1 .acc{color:var(--acc)}
 .groups{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem}
 
 /* Group card */
-.gcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-/* No animation on cards – iOS can't handle 29 simultaneous fadeUp animations */
+.gcard{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+  min-height:60px; /* prevents collapse when images haven't loaded */
+}
 .gcard-head{
   display:flex;align-items:center;gap:.75rem;
   padding:.8rem 1.1rem;cursor:pointer;user-select:none;
   -webkit-tap-highlight-color:transparent;
+  min-height:52px; /* always visible even without images */
 }
 .gbadge{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;padding:.2rem .55rem;border-radius:100px;text-transform:uppercase;white-space:nowrap}
 .badge-hash{background:rgba(255,71,87,.15);color:var(--red)}
@@ -242,8 +246,8 @@ h1 .acc{color:var(--acc)}
 .gcard.collapsed .gtoggle{transform:rotate(-90deg)}
 .gcard.collapsed .gimg-grid,.gcard.collapsed .gai-desc,.gcard.collapsed .gactions{display:none}
 
-.gimg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--border)}
-.img-item{position:relative;aspect-ratio:1;overflow:hidden;background:var(--surf2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.gimg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--border);min-height:60px}
+.img-item{position:relative;aspect-ratio:1;overflow:hidden;background:var(--surf2);cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:60px}
 .img-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
 .img-item.keep{outline:3px solid var(--acc);outline-offset:-3px}
 .img-item.del{outline:3px solid var(--red);outline-offset:-3px}
@@ -1032,6 +1036,9 @@ function buildCard(g, gi) {
     <span class="gtitle">${g.aiDesc||g.images.map(i=>i.name).join(', ').substring(0,50)}</span>
     <span class="gmeta">${g.images.length} Bilder</span>
     <span class="gtoggle">▼</span>`;
+  // Start collapsed – user taps to expand
+  // This prevents iOS from trying to render all thumbnails simultaneously
+  card.classList.add('collapsed');
   head.addEventListener('click', ()=>card.classList.toggle('collapsed'));
   card.appendChild(head);
 
