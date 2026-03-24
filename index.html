@@ -134,6 +134,10 @@ h1 .acc{color:var(--acc)}
   border-radius:var(--r);padding:.85rem 1.8rem;
   font-family:var(--font);font-size:1rem;font-weight:700;
   pointer-events:none;width:100%;
+  transition:transform .15s, opacity .15s;
+}
+.file-input-wrap:active .btn-visual{
+  transform:scale(.97); opacity:.85;
 }
 
 .ios-tip{
@@ -517,7 +521,10 @@ function show(id) {
         <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ (Löschliste wird exportiert)</div>
       </div>`;
     note.textContent = '';
-    document.getElementById('file-in').addEventListener('change', onFileInput);
+    // iOS Safari: attach both 'change' and 'input' events as fallback
+    const fileIn = document.getElementById('file-in');
+    fileIn.addEventListener('change', onFileInput);
+    fileIn.addEventListener('input',  onFileInput); // iOS sometimes fires 'input' instead
   } else {
     // Desktop Chrome/Edge
     area.innerHTML = `
@@ -612,17 +619,22 @@ async function collectDir(dir, list, depth=0) {
   }
 }
 
+let _scanRunning = false;
 async function onFileInput(e) {
-  // iOS HEIC files often have empty MIME type – filter by extension too
-  const files = [...e.target.files].filter(f =>
+  if (_scanRunning) return; // prevent double-fire from change+input
+  const files = [...(e.target.files || [])].filter(f =>
     f.type.startsWith('image/') ||
     /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif|tiff?)$/i.test(f.name)
   );
   if (!files.length) { toast('Keine Bilder ausgewählt', 'err'); return; }
-  toast(`${files.length} Bilder geladen`, 'ok');
+  _scanRunning = true;
+  toast(`${files.length} Bilder werden geladen…`);
   S.files = files; S.imgs = []; S.groups = []; S.del.clear();
+  // Small delay so toast renders before heavy work starts
+  await new Promise(r => setTimeout(r, 80));
   show('s-scan');
   await runFallback(files);
+  _scanRunning = false;
 }
 
 // ═══════════════════════════════════════════
