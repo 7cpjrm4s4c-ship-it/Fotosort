@@ -499,7 +499,7 @@ function show(id) {
     area.innerHTML = `
       <div class="mode-badge mode-ios" style="margin-bottom:.25rem">📱 iOS/Safari Modus</div>
       <div class="file-input-wrap">
-        <input type="file" id="file-in" accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif" multiple/>
+        <input type="file" id="file-in" accept="image/*" multiple/>
         <div class="btn-visual">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
@@ -613,8 +613,13 @@ async function collectDir(dir, list, depth=0) {
 }
 
 async function onFileInput(e) {
-  const files = [...e.target.files].filter(f => f.type.startsWith('image/'));
+  // iOS HEIC files often have empty MIME type – filter by extension too
+  const files = [...e.target.files].filter(f =>
+    f.type.startsWith('image/') ||
+    /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif|tiff?)$/i.test(f.name)
+  );
   if (!files.length) { toast('Keine Bilder ausgewählt', 'err'); return; }
+  toast(`${files.length} Bilder geladen`, 'ok');
   S.files = files; S.imgs = []; S.groups = []; S.del.clear();
   show('s-scan');
   await runFallback(files);
@@ -654,21 +659,29 @@ async function runFallback(files) {
       const exif = await exifDate(files[i]);
       S.imgs.push({ handle: null, file: files[i], ...sig, exif, name: files[i].name, size: files[i].size });
       litCell(i % 25);
-    } catch(e) { console.warn(e); }
+    } catch(e) { console.warn('Skip', files[i].name, e); }
     setProgress((i+1)/total*60);
-    setScanStatus(`${i+1} / ${total}`);
-    await tick();
+    setScanStatus(`${i+1} / ${total} Bilder`);
+    // yield every 5 images to keep UI responsive on 500+ files
+    if (i % 5 === 0) await tick();
   }
   await finish();
 }
 
 async function finish() {
   setScanTitle('Ähnlichkeiten berechnen…');
+  setScanStatus(`${S.imgs.length} Bilder analysiert`);
+  await tick();
+
   const hg = groupHash(S.imgs);
+  setProgress(70);
+  setScanStats(`${hg.length} Duplikat-Gruppen gefunden…`);
+  await tick();
+
   const vg = groupVisual(S.imgs, S.thresh);
-  setProgress(80);
-  document.getElementById('scan-stats').textContent =
-    `${hg.length} Duplikat-Gruppen · ${vg.length} visuelle Gruppen`;
+  setProgress(85);
+  setScanStats(`${hg.length} Duplikat-Gruppen · ${vg.length} visuelle Gruppen`);
+  await tick();
 
   let ag = [];
   if (S.apiKey && S.imgs.length > 1) {
@@ -684,7 +697,10 @@ async function finish() {
 }
 
 // ═══════════════════════════════════════════
-//  IMAGE SIGNATURE (hash + color vec + thumb)
+//  IMAGE SIGNATURE – dHash + color histogram
+//  dHash compares adjacent pixels → much better
+//  at detecting near-identical photos (burst shots,
+//  slightly different exposure, minor crop)
 // ═══════════════════════════════════════════
 function signature(file) {
   return new Promise((res, rej) => {
@@ -692,42 +708,54 @@ function signature(file) {
     const img = new Image();
     img.onload = () => {
       try {
-        const W = 32;
+        // ── dHash: 9×8 grid → 64-bit hash ──
+        // Each bit = left pixel brighter than right pixel
+        const W = 9, H = 8;
         const c = document.createElement('canvas');
-        c.width = c.height = W;
+        c.width = W; c.height = H;
         const ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0, W, W);
-        const d = ctx.getImageData(0, 0, W, W).data;
-
-        // avg hash
-        const gray = [];
-        for (let i = 0; i < d.length; i += 4)
-          gray.push(.299*d[i] + .587*d[i+1] + .114*d[i+2]);
-        const avg = gray.reduce((a,b)=>a+b,0)/gray.length;
-        const hash = gray.map(g => g >= avg ? 1 : 0);
-
-        // color vec (4×4 grid, RGB avg per block)
-        const col = [], step = W/4;
-        for (let by=0; by<4; by++) for (let bx=0; bx<4; bx++) {
-          let r=0,g=0,b=0,n=0;
-          for (let y=by*step; y<(by+1)*step; y++)
-            for (let x=bx*step; x<(bx+1)*step; x++) {
-              const ix=(y*W+x)*4; r+=d[ix]; g+=d[ix+1]; b+=d[ix+2]; n++;
-            }
-          col.push(r/n, g/n, b/n);
+        ctx.drawImage(img, 0, 0, W, H);
+        const d = ctx.getImageData(0, 0, W, H).data;
+        const hash = [];
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W - 1; x++) {
+            const i1 = (y * W + x) * 4;
+            const i2 = (y * W + x + 1) * 4;
+            const g1 = .299*d[i1] + .587*d[i1+1] + .114*d[i1+2];
+            const g2 = .299*d[i2] + .587*d[i2+1] + .114*d[i2+2];
+            hash.push(g1 > g2 ? 1 : 0);
+          }
         }
 
-        // thumb 64px
+        // ── Color histogram: 8 bins per channel ──
+        // Normalised so exposure/brightness shifts still match
+        const HW = 32;
+        const hc = document.createElement('canvas');
+        hc.width = hc.height = HW;
+        const hctx = hc.getContext('2d');
+        hctx.drawImage(img, 0, 0, HW, HW);
+        const hd = hctx.getImageData(0, 0, HW, HW).data;
+        const BINS = 8;
+        const hist = new Float32Array(BINS * 3);
+        const total = HW * HW;
+        for (let i = 0; i < hd.length; i += 4) {
+          hist[Math.floor(hd[i]   / 32)]        += 1;
+          hist[BINS + Math.floor(hd[i+1] / 32)] += 1;
+          hist[BINS*2 + Math.floor(hd[i+2] / 32)] += 1;
+        }
+        for (let i = 0; i < hist.length; i++) hist[i] /= total;
+
+        // ── Thumbnail 96px for display ──
         const tc = document.createElement('canvas');
-        tc.width = tc.height = 64;
-        tc.getContext('2d').drawImage(img, 0, 0, 64, 64);
-        const thumb = tc.toDataURL('image/jpeg', .5);
+        tc.width = tc.height = 96;
+        tc.getContext('2d').drawImage(img, 0, 0, 96, 96);
+        const thumb = tc.toDataURL('image/jpeg', .6);
 
         URL.revokeObjectURL(url);
-        res({ hash, col, thumb });
-      } catch(e) { rej(e); }
+        res({ hash, col: Array.from(hist), thumb });
+      } catch(e) { URL.revokeObjectURL(url); rej(e); }
     };
-    img.onerror = rej;
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load')); };
     img.src = url;
   });
 }
@@ -746,18 +774,27 @@ async function exifDate(file) {
 }
 
 // ═══════════════════════════════════════════
-//  GROUPING
+//  GROUPING – tuned for dHash + histogram
 // ═══════════════════════════════════════════
 function hamming(a,b) { let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d; }
-function colDist(a,b) { let s=0; for(let i=0;i<a.length;i++) s+=Math.abs(a[i]-b[i]); return s/a.length; }
+
+// Histogram intersection distance (0=identical, 1=totally different)
+function histDist(a,b) {
+  let intersect=0;
+  for(let i=0;i<a.length;i++) intersect+=Math.min(a[i],b[i]);
+  return 1 - intersect / (a.length / 3); // normalise to [0,1]
+}
 
 function groupHash(imgs) {
+  // dHash ≤ 8 = near-exact duplicates (same photo, different compression/resize)
   const groups=[], used=new Set();
   for (let i=0;i<imgs.length;i++) {
     if (used.has(i)) continue;
     const g=[imgs[i]];
     for (let j=i+1;j<imgs.length;j++) {
-      if (!used.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=2) { g.push(imgs[j]); used.add(j); }
+      if (!used.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=8) {
+        g.push(imgs[j]); used.add(j);
+      }
     }
     if (g.length>1) { used.add(i); groups.push({type:'hash',images:g}); }
   }
@@ -765,16 +802,24 @@ function groupHash(imgs) {
 }
 
 function groupVisual(imgs, thresh) {
+  // thresh slider 1-20 maps to dHash ≤ (8 + thresh*1.5) AND histDist ≤ 0.25
+  // Default thresh=8 → dHash ≤ 20, which catches burst shots & bracketing
+  const hashThresh = 8 + thresh * 1.5;
+  const histThresh = 0.12 + thresh * 0.015; // relaxes with slider
   const groups=[], used=new Set();
   for (let i=0;i<imgs.length;i++) {
     if (used.has(i)) continue;
     const g=[imgs[i]], sc=[{img:imgs[i],score:0}];
     for (let j=i+1;j<imgs.length;j++) {
       if (used.has(j)) continue;
-      const hd=hamming(imgs[i].hash,imgs[j].hash);
-      const cd=colDist(imgs[i].col,imgs[j].col);
-      const combined=hd+cd*.5;
-      if (hd>2 && combined<=thresh) { g.push(imgs[j]); sc.push({img:imgs[j],score:Math.round(combined)}); used.add(j); }
+      const hd = hamming(imgs[i].hash, imgs[j].hash);
+      const cd = histDist(imgs[i].col, imgs[j].col);
+      // Must pass BOTH checks – catches similar scenes without false positives
+      if (hd > 8 && hd <= hashThresh && cd <= histThresh) {
+        g.push(imgs[j]);
+        sc.push({img:imgs[j], score:Math.round(hd)});
+        used.add(j);
+      }
     }
     if (g.length>1) { used.add(i); groups.push({type:'visual',images:g,scores:sc}); }
   }
