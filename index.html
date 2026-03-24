@@ -117,16 +117,17 @@ h1 .acc{color:var(--acc)}
 .btn-danger:active{opacity:.8}
 .btn-sm{font-size:.78rem;padding:.38rem .8rem}
 
-/* iOS file button – real button calls hidden input */
+/* iOS file button – label[for] is the only reliable iOS trigger */
 .ios-file-btn{
   display:flex;align-items:center;justify-content:center;gap:.6rem;
   background:var(--acc);color:#0a0a0f;
   border:none;border-radius:var(--r);padding:.85rem 1.8rem;
   font-family:var(--font);font-size:1rem;font-weight:700;
   cursor:pointer;-webkit-tap-highlight-color:transparent;
-  width:100%;max-width:280px;
+  width:100%;max-width:280px;box-sizing:border-box;
   transition:transform .15s,opacity .15s;
   animation:fadeUp .5s .38s ease both;
+  user-select:none;-webkit-user-select:none;
 }
 .ios-file-btn:active{ transform:scale(.97); opacity:.85; }
 
@@ -489,17 +490,19 @@ function show(id) {
   const note  = document.getElementById('fs-note');
 
   if (FALLBACK) {
-    // iOS / Safari – real button calls hidden input.click()
-    // This is the most reliable approach on iOS Safari
+    // iOS / Safari – <label for> is the ONLY reliably working approach on iOS
+    // button.click() / input.click() are blocked by iOS security policy
     area.innerHTML = `
       <div class="mode-badge mode-ios" style="margin-bottom:.25rem">📱 iOS/Safari Modus</div>
-      <input type="file" id="file-in" accept="image/*" multiple style="display:none;font-size:16px"/>
-      <button class="ios-file-btn" id="btn-pick">
+      <input type="file" id="file-in" accept="image/*" multiple style="
+        position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;
+      "/>
+      <label for="file-in" class="ios-file-btn">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
         </svg>
         Bilder auswählen
-      </button>
+      </label>
       <div class="ios-tip">
         <div class="ios-tip-title">💡 Viele Bilder auswählen</div>
         <ol>
@@ -510,12 +513,7 @@ function show(id) {
         <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ (Löschliste wird exportiert)</div>
       </div>`;
     note.textContent = '';
-    const fileIn = document.getElementById('file-in');
-    const btnPick = document.getElementById('btn-pick');
-    // Button click opens native file picker
-    btnPick.addEventListener('click', () => fileIn.click());
-    // Handle selection
-    fileIn.addEventListener('change', onFileInput);
+    document.getElementById('file-in').addEventListener('change', onFileInput);
   } else {
     // Desktop Chrome/Edge
     area.innerHTML = `
@@ -1111,7 +1109,9 @@ function litCell(i) {
   cells[i]?.classList.add('lit');
   setTimeout(()=>cells[i]?.classList.remove('lit'), 350);
 }
-function tick() { return new Promise(r=>setTimeout(r,0)); }
+// iOS Safari needs at least one real frame (16ms) to release the UI thread
+// setTimeout(0) is not enough – it gets batched and never actually yields
+function tick() { return new Promise(r => setTimeout(r, 16)); }
 
 // ═══════════════════════════════════════════
 //  MISC
