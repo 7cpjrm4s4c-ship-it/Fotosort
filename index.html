@@ -699,14 +699,8 @@ async function finish() {
   setScanStatus(`${n} Bilder · ${Math.round(n*(n-1)/2).toLocaleString()} Vergleiche`);
   setProgress(62); await tick();
 
-  const hg = await groupHash(S.imgs);
-  setProgress(75);
-  setScanStats(`${hg.length} Duplikat-Gruppen…`);
-  setScanTitle('Ähnliche suchen…');
-  await tick();
-
-  const vg = await groupVisual(S.imgs, S.thresh);
-  setProgress(88);
+  const {hg, vg} = await runWorker(S.imgs, S.thresh);
+  setProgress(90);
   setScanStats(`${hg.length} Duplikat · ${vg.length} visuelle Gruppen`);
   await tick();
 
@@ -794,62 +788,132 @@ async function exifDate(file) {
 }
 
 // ═══════════════════════════════════════════
-//  GROUPING – chunked to avoid UI freeze
+//  GROUPING VIA WEB WORKER
+//  Runs in separate thread → iOS can't freeze it
+//  Worker code is inlined as a Blob URL
 // ═══════════════════════════════════════════
 function hamming(a,b) { let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d; }
-
 function histDist(a,b) {
-  let intersect=0;
-  for(let i=0;i<a.length;i++) intersect+=Math.min(a[i],b[i]);
-  return 1 - intersect / (a.length / 3);
+  let x=0; for(let i=0;i<a.length;i++) x+=Math.min(a[i],b[i]);
+  return 1 - x/(a.length/3);
 }
 
-async function groupHash(imgs) {
-  const groups=[], used=new Set();
+// Inline worker source – runs hamming+histDist comparison off main thread
+const WORKER_SRC = `
+function hamming(a,b){let d=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])d++;return d;}
+function histDist(a,b){let x=0;for(let i=0;i<a.length;i++)x+=Math.min(a[i],b[i]);return 1-x/(a.length/3);}
+
+self.onmessage = function(e) {
+  const {imgs, thresh} = e.data;
   const n = imgs.length;
-  for (let i=0;i<n;i++) {
-    if (used.has(i)) continue;
-    const g=[imgs[i]];
-    for (let j=i+1;j<n;j++) {
-      if (!used.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=8) {
-        g.push(imgs[j]); used.add(j);
-      }
-    }
-    if (g.length>1) { used.add(i); groups.push({type:'hash',images:g}); }
-    if (i % 5 === 0) {
-      setProgress(62 + (i/n)*6);
-      await tick();
-    }
-  }
-  return groups;
-}
-
-async function groupVisual(imgs, thresh) {
   const hashThresh = 8 + thresh * 1.5;
   const histThresh = 0.12 + thresh * 0.015;
-  const groups=[], used=new Set();
-  const n = imgs.length;
-  for (let i=0;i<n;i++) {
-    if (used.has(i)) continue;
-    const g=[imgs[i]], sc=[{img:imgs[i],score:0}];
-    for (let j=i+1;j<n;j++) {
-      if (used.has(j)) continue;
+  const hashGroups = [], visualGroups = [], usedH = new Set(), usedV = new Set();
+
+  // Hash groups (exact duplicates, dHash ≤ 8)
+  for (let i = 0; i < n; i++) {
+    if (usedH.has(i)) continue;
+    const g = [i];
+    for (let j = i+1; j < n; j++) {
+      if (!usedH.has(j) && hamming(imgs[i].hash, imgs[j].hash) <= 8) {
+        g.push(j); usedH.add(j);
+      }
+    }
+    if (g.length > 1) { usedH.add(i); hashGroups.push(g); }
+    if (i % 10 === 0) self.postMessage({type:'progress', phase:'hash', pct: i/n});
+  }
+
+  // Visual groups
+  for (let i = 0; i < n; i++) {
+    if (usedV.has(i) || usedH.has(i)) continue;
+    const g = [i], sc = [0];
+    for (let j = i+1; j < n; j++) {
+      if (usedV.has(j) || usedH.has(j)) continue;
       const hd = hamming(imgs[i].hash, imgs[j].hash);
       if (hd <= 8 || hd > hashThresh) continue;
       const cd = histDist(imgs[i].col, imgs[j].col);
-      if (cd <= histThresh) {
-        g.push(imgs[j]);
-        sc.push({img:imgs[j], score:Math.round(hd)});
-        used.add(j);
-      }
+      if (cd <= histThresh) { g.push(j); sc.push(Math.round(hd)); usedV.add(j); }
     }
-    if (g.length>1) { used.add(i); groups.push({type:'visual',images:g,scores:sc}); }
-    if (i % 5 === 0) {
-      setProgress(68 + (i/n)*18);
-      await tick();
-    }
+    if (g.length > 1) { usedV.add(i); visualGroups.push({indices:g, scores:sc}); }
+    if (i % 10 === 0) self.postMessage({type:'progress', phase:'visual', pct: i/n});
   }
-  return groups;
+
+  self.postMessage({type:'done', hashGroups, visualGroups});
+};
+`;
+
+function runWorker(imgs, thresh) {
+  return new Promise((resolve) => {
+    const blob = new Blob([WORKER_SRC], {type:'application/javascript'});
+    const url  = URL.createObjectURL(blob);
+    const w    = new Worker(url);
+
+    // Strip non-transferable data before sending to worker
+    const lean = imgs.map(img => ({ hash: img.hash, col: img.col }));
+
+    w.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === 'progress') {
+        if (msg.phase === 'hash')   setProgress(62 + msg.pct * 8);
+        if (msg.phase === 'visual') setProgress(70 + msg.pct * 18);
+        setScanTitle(msg.phase === 'hash' ? 'Duplikate suchen…' : 'Ähnliche suchen…');
+      } else if (msg.type === 'done') {
+        w.terminate();
+        URL.revokeObjectURL(url);
+
+        const hg = msg.hashGroups.map(indices => ({
+          type: 'hash',
+          images: indices.map(i => imgs[i])
+        }));
+        const vg = msg.visualGroups.map(({indices, scores}) => ({
+          type: 'visual',
+          images: indices.map(i => imgs[i]),
+          scores: indices.map((i, si) => ({img: imgs[i], score: scores[si]}))
+        }));
+        resolve({hg, vg});
+      }
+    };
+
+    w.onerror = (err) => {
+      console.warn('Worker error, falling back:', err);
+      w.terminate();
+      URL.revokeObjectURL(url);
+      // Fallback: run synchronously if Worker fails
+      fallbackGroup(imgs, thresh).then(resolve);
+    };
+
+    w.postMessage({imgs: lean, thresh});
+  });
+}
+
+// Synchronous fallback in case Worker is unavailable
+async function fallbackGroup(imgs, thresh) {
+  const hashThresh = 8 + thresh * 1.5;
+  const histThresh = 0.12 + thresh * 0.015;
+  const hg=[], vg=[], usedH=new Set(), usedV=new Set();
+  const n = imgs.length;
+  for (let i=0;i<n;i++) {
+    if (usedH.has(i)) continue;
+    const g=[imgs[i]];
+    for (let j=i+1;j<n;j++) {
+      if (!usedH.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=8) { g.push(imgs[j]); usedH.add(j); }
+    }
+    if (g.length>1) { usedH.add(i); hg.push({type:'hash',images:g}); }
+    if (i%5===0) { setProgress(62+i/n*8); await new Promise(r=>setTimeout(r,16)); }
+  }
+  for (let i=0;i<n;i++) {
+    if (usedV.has(i)||usedH.has(i)) continue;
+    const g=[imgs[i]],sc=[{img:imgs[i],score:0}];
+    for (let j=i+1;j<n;j++) {
+      if (usedV.has(j)||usedH.has(j)) continue;
+      const hd=hamming(imgs[i].hash,imgs[j].hash);
+      if (hd<=8||hd>hashThresh) continue;
+      if (histDist(imgs[i].col,imgs[j].col)<=histThresh) { g.push(imgs[j]); sc.push({img:imgs[j],score:hd}); usedV.add(j); }
+    }
+    if (g.length>1) { usedV.add(i); vg.push({type:'visual',images:g,scores:sc}); }
+    if (i%5===0) { setProgress(70+i/n*18); await new Promise(r=>setTimeout(r,16)); }
+  }
+  return {hg, vg};
 }
 
 function merge(hg, vg, ag) {
@@ -1027,14 +1091,14 @@ function updateDelBtn() {
 //  RECOMPUTE ON THRESHOLD
 // ═══════════════════════════════════════════
 async function recompute() {
-  const hg=S.groups.filter(g=>g.type==='hash');
-  const ag=S.groups.filter(g=>g.type==='ai');
-  const inH=new Set(hg.flatMap(g=>g.images.map(i=>i.name)));
-  const vgRaw = await groupVisual(S.imgs, S.thresh);
-  const vg = vgRaw
-    .map(g=>({...g,images:g.images.filter(i=>!inH.has(i.name))}))
+  const hgOld = S.groups.filter(g=>g.type==='hash');
+  const ag    = S.groups.filter(g=>g.type==='ai');
+  const inH   = new Set(hgOld.flatMap(g=>g.images.map(i=>i.name)));
+  const {vg}  = await runWorker(S.imgs, S.thresh);
+  const vgFiltered = vg
+    .map(g=>({...g, images:g.images.filter(i=>!inH.has(i.name))}))
     .filter(g=>g.images.length>1);
-  S.groups=[...hg,...vg,...ag];
+  S.groups = [...hgOld, ...vgFiltered, ...ag];
   S.groups.sort((a,b)=>b.images.length-a.images.length);
   renderAll();
 }
