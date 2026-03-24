@@ -705,18 +705,20 @@ async function analyseFile(file, handle = null) {
 }
 
 async function finish() {
-  setScanTitle('Ähnlichkeiten berechnen…');
-  setScanStatus(`${S.imgs.length} Bilder analysiert`);
+  const n = S.imgs.length;
+  setScanTitle('Duplikate suchen…');
+  setScanStatus(`${n} Bilder · ${Math.round(n*(n-1)/2).toLocaleString()} Vergleiche`);
+  setProgress(62); await tick();
+
+  const hg = await groupHash(S.imgs);
+  setProgress(75);
+  setScanStats(`${hg.length} Duplikat-Gruppen…`);
+  setScanTitle('Ähnliche suchen…');
   await tick();
 
-  const hg = groupHash(S.imgs);
-  setProgress(70);
-  setScanStats(`${hg.length} Duplikat-Gruppen gefunden…`);
-  await tick();
-
-  const vg = groupVisual(S.imgs, S.thresh);
-  setProgress(85);
-  setScanStats(`${hg.length} Duplikat-Gruppen · ${vg.length} visuelle Gruppen`);
+  const vg = await groupVisual(S.imgs, S.thresh);
+  setProgress(88);
+  setScanStats(`${hg.length} Duplikat · ${vg.length} visuelle Gruppen`);
   await tick();
 
   let ag = [];
@@ -803,19 +805,17 @@ async function exifDate(file) {
 }
 
 // ═══════════════════════════════════════════
-//  GROUPING – tuned for dHash + histogram
+//  GROUPING – chunked to avoid UI freeze
 // ═══════════════════════════════════════════
 function hamming(a,b) { let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d; }
 
-// Histogram intersection distance (0=identical, 1=totally different)
 function histDist(a,b) {
   let intersect=0;
   for(let i=0;i<a.length;i++) intersect+=Math.min(a[i],b[i]);
-  return 1 - intersect / (a.length / 3); // normalise to [0,1]
+  return 1 - intersect / (a.length / 3);
 }
 
-function groupHash(imgs) {
-  // dHash ≤ 8 = near-exact duplicates (same photo, different compression/resize)
+async function groupHash(imgs) {
   const groups=[], used=new Set();
   for (let i=0;i<imgs.length;i++) {
     if (used.has(i)) continue;
@@ -826,31 +826,32 @@ function groupHash(imgs) {
       }
     }
     if (g.length>1) { used.add(i); groups.push({type:'hash',images:g}); }
+    if (i % 20 === 0) await tick(); // yield every 20 rows
   }
   return groups;
 }
 
-function groupVisual(imgs, thresh) {
-  // thresh slider 1-20 maps to dHash ≤ (8 + thresh*1.5) AND histDist ≤ 0.25
-  // Default thresh=8 → dHash ≤ 20, which catches burst shots & bracketing
+async function groupVisual(imgs, thresh) {
   const hashThresh = 8 + thresh * 1.5;
-  const histThresh = 0.12 + thresh * 0.015; // relaxes with slider
+  const histThresh = 0.12 + thresh * 0.015;
   const groups=[], used=new Set();
-  for (let i=0;i<imgs.length;i++) {
+  const total = imgs.length;
+  for (let i=0;i<total;i++) {
     if (used.has(i)) continue;
     const g=[imgs[i]], sc=[{img:imgs[i],score:0}];
-    for (let j=i+1;j<imgs.length;j++) {
+    for (let j=i+1;j<total;j++) {
       if (used.has(j)) continue;
       const hd = hamming(imgs[i].hash, imgs[j].hash);
+      if (hd <= 8 || hd > hashThresh) continue; // fast pre-filter
       const cd = histDist(imgs[i].col, imgs[j].col);
-      // Must pass BOTH checks – catches similar scenes without false positives
-      if (hd > 8 && hd <= hashThresh && cd <= histThresh) {
+      if (cd <= histThresh) {
         g.push(imgs[j]);
         sc.push({img:imgs[j], score:Math.round(hd)});
         used.add(j);
       }
     }
     if (g.length>1) { used.add(i); groups.push({type:'visual',images:g,scores:sc}); }
+    if (i % 20 === 0) await tick(); // yield every 20 rows
   }
   return groups;
 }
@@ -1029,11 +1030,12 @@ function updateDelBtn() {
 // ═══════════════════════════════════════════
 //  RECOMPUTE ON THRESHOLD
 // ═══════════════════════════════════════════
-function recompute() {
+async function recompute() {
   const hg=S.groups.filter(g=>g.type==='hash');
   const ag=S.groups.filter(g=>g.type==='ai');
   const inH=new Set(hg.flatMap(g=>g.images.map(i=>i.name)));
-  const vg=groupVisual(S.imgs,S.thresh)
+  const vgRaw = await groupVisual(S.imgs, S.thresh);
+  const vg = vgRaw
     .map(g=>({...g,images:g.images.filter(i=>!inH.has(i.name))}))
     .filter(g=>g.images.length>1);
   S.groups=[...hg,...vg,...ag];
