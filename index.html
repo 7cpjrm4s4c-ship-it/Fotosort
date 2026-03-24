@@ -401,11 +401,6 @@ h1 .acc{color:var(--acc)}
       <button class="tab" data-f="visual">Visuell</button>
       <button class="tab" data-f="ai">KI</button>
     </div>
-    <div class="thresh-row">
-      <span class="mono-lbl">Schwelle</span>
-      <input type="range" id="thresh-slider" min="1" max="20" value="8"/>
-      <span id="thresh-val" class="mono-lbl">8</span>
-    </div>
   </div>
 
   <div class="global-bar">
@@ -732,6 +727,12 @@ async function finish() {
         allGroups.push({ ...g, images: fresh });
       }
     }
+
+    // Wait between batches to avoid rate limits (Haiku: 5 req/min on free tier)
+    if (i + BATCH < S.imgs.length) {
+      setScanTitle(`Kurze Pause… (${i+BATCH} / ${n} fertig)`);
+      await new Promise(r => setTimeout(r, 3000)); // 3s between batches
+    }
   }
 
   setProgress(100);
@@ -1054,10 +1055,10 @@ function buildCard(g, gi) {
         <button class="ib ib-del">✕</button>
       </div>`;
     item.querySelector('.ib-keep').addEventListener('click', e=>{
-      e.stopPropagation(); keepOne(g, img.name); renderGroups();
+      e.stopPropagation(); keepOne(g, img.name);
     });
     item.querySelector('.ib-del').addEventListener('click', e=>{
-      e.stopPropagation(); toggleDel(img.name); renderGroups();
+      e.stopPropagation(); toggleDel(img.name);
     });
     grid.appendChild(item);
   });
@@ -1081,7 +1082,6 @@ function buildCard(g, gi) {
     const a=b.dataset.a;
     if (a==='best'||a==='rest') keepBest(g);
     if (a==='reset') resetGroup(g);
-    renderGroups();
   }));
   card.appendChild(acts);
   return card;
@@ -1091,24 +1091,59 @@ function buildCard(g, gi) {
 //  SELECTION LOGIC
 // ═══════════════════════════════════════════
 function keepOne(g, name) {
-  g.images.forEach(i=>{ if(i.name===name) S.del.delete(i.name); else S.del.add(i.name); });
+  g.images.forEach(i => {
+    if (i.name === name) S.del.delete(i.name);
+    else S.del.add(i.name);
+  });
+  updateCardVisuals(g);
+  updateDelBtn();
 }
+
 function keepBest(g) {
-  const best=g.images.reduce((a,b)=>b.size>a.size?b:a,g.images[0]);
+  const best = g.images.reduce((a,b) => b.size > a.size ? b : a, g.images[0]);
   keepOne(g, best.name);
 }
-function resetGroup(g) { g.images.forEach(i=>S.del.delete(i.name)); }
-function toggleDel(name) { S.del.has(name)?S.del.delete(name):S.del.add(name); }
+
+function resetGroup(g) {
+  g.images.forEach(i => S.del.delete(i.name));
+  updateCardVisuals(g);
+  updateDelBtn();
+}
+
+function toggleDel(name) {
+  S.del.has(name) ? S.del.delete(name) : S.del.add(name);
+  // Find and update just this one item
+  document.querySelectorAll('.img-item').forEach(el => {
+    const nameEl = el.querySelector('.img-name');
+    if (nameEl && nameEl.textContent === name) {
+      el.classList.toggle('del', S.del.has(name));
+      el.classList.toggle('keep', false);
+    }
+  });
+  updateDelBtn();
+}
+
+// Update visual state of all items in a group without full re-render
+function updateCardVisuals(g) {
+  g.images.forEach(img => {
+    document.querySelectorAll('.img-item').forEach(el => {
+      const nameEl = el.querySelector('.img-name');
+      if (nameEl && nameEl.textContent === img.name) {
+        el.classList.toggle('del', S.del.has(img.name));
+        el.classList.toggle('keep', !S.del.has(img.name) && img.name === g.images.reduce((a,b) => b.size > a.size ? b : a, g.images[0]).name);
+      }
+    });
+  });
+}
 
 function globalAct(type) {
-  const visible=S.groups.filter(g=>S.filter==='all'||g.type===S.filter);
-  visible.forEach(g=>{
-    if (type==='best'||type==='rest') keepBest(g);
-    if (type==='reset') resetGroup(g);
+  const visible = S.groups.filter(g => S.filter === 'all' || g.type === S.filter);
+  visible.forEach(g => {
+    if (type === 'best' || type === 'rest') keepBest(g);
+    if (type === 'reset') resetGroup(g);
   });
-  renderGroups();
-  const n=S.del.size;
-  toast(type==='reset'?'Auswahl zurückgesetzt':`${n} Bilder markiert`, type==='reset'?'':'ok');
+  const n = S.del.size;
+  toast(type === 'reset' ? 'Auswahl zurückgesetzt' : `${n} Bilder markiert`, type === 'reset' ? '' : 'ok');
 }
 
 function updateDelBtn() {
