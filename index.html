@@ -8,14 +8,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>FotoSort</title>
 <link rel="manifest" href="manifest.json"/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-/* ══ RESET ══ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0a0a0f;--surf:#12121a;--surf2:#1a1a26;
   --border:rgba(255,255,255,0.08);--borderacc:rgba(232,255,71,0.3);
-  --acc:#e8ff47;--accDim:rgba(232,255,71,0.15);
+  --acc:#e8ff47;--accDim:rgba(232,255,71,0.12);
   --txt:#f0f0f8;--muted:rgba(240,240,248,0.45);
   --red:#ff4757;--redDim:rgba(255,71,87,0.15);
   --blue:#4fc3f7;--purple:#b388ff;--green:#69f0ae;
@@ -23,34 +22,18 @@
   --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
 }
 html{height:100%;-webkit-text-size-adjust:100%}
-body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
+body{height:100%;min-height:-webkit-fill-available;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
 
-/* ══ SCREEN SYSTEM ══ */
-/* Each screen is full-viewport, hidden by default via visibility+pointer-events */
-.screen{
-  position:fixed;inset:0;
-  display:flex;flex-direction:column;
-  visibility:hidden;pointer-events:none;
-  opacity:0;transition:opacity 0.2s;
-  overflow-y:auto;-webkit-overflow-scrolling:touch;
-  z-index:1;
-}
-.screen.active{
-  visibility:visible;pointer-events:auto;
-  opacity:1;z-index:2;
-}
+/* SCREEN SYSTEM – visibility+opacity, never display:none on screens */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;visibility:hidden;pointer-events:none;opacity:0;transition:opacity 0.15s;overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:1}
+.screen.active{visibility:visible;pointer-events:auto;opacity:1;z-index:2}
 
-/* ══ LANDING ══ */
+/* LANDING */
 #s-land{align-items:center;justify-content:center;background:var(--bg)}
 .land-bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.grid-lines{
-  position:absolute;inset:0;
-  background-image:linear-gradient(rgba(232,255,71,0.03)1px,transparent 1px),
-    linear-gradient(90deg,rgba(232,255,71,0.03)1px,transparent 1px);
-  background-size:40px 40px;
-}
-.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.1;animation:drift 12s ease-in-out infinite}
-.orb1{width:500px;height:500px;top:-150px;left:-150px;background:var(--acc);animation-delay:0s}
+.grid-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(232,255,71,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(232,255,71,0.03)1px,transparent 1px);background-size:40px 40px}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.08;animation:drift 12s ease-in-out infinite}
+.orb1{width:500px;height:500px;top:-150px;left:-150px;background:var(--acc)}
 .orb2{width:350px;height:350px;bottom:-100px;right:-100px;background:var(--purple);animation-delay:-5s}
 @keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-20px)}}
 
@@ -58,119 +41,60 @@ body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);o
   position:relative;z-index:1;
   display:flex;flex-direction:column;align-items:center;
   gap:1.25rem;text-align:center;
-  padding:2rem 1.5rem;max-width:420px;width:100%;
+  padding:2rem 1.5rem max(2rem,env(safe-area-inset-bottom));
+  max-width:420px;width:100%
 }
-.logo-icon svg{animation:fadeUp .5s ease both}
 h1{font-size:clamp(2.8rem,10vw,4.5rem);font-weight:800;letter-spacing:-.03em;animation:fadeUp .5s .08s ease both}
 h1 .acc{color:var(--acc)}
 .tagline{font-size:1rem;color:var(--muted);line-height:1.6;animation:fadeUp .5s .15s ease both}
 .pills{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;animation:fadeUp .5s .22s ease both}
 .pill{background:var(--surf2);border:1px solid var(--border);padding:.35rem .8rem;border-radius:100px;font-size:.75rem;font-family:var(--mono);color:var(--muted)}
 
-/* API box */
-.api-box{
-  width:100%;background:var(--surf);border:1px solid var(--border);
-  border-radius:var(--r);padding:1.1rem;
-  animation:fadeUp .5s .3s ease both;
-}
+.api-box{width:100%;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;animation:fadeUp .5s .3s ease both}
 .mono-lbl{font-family:var(--mono);font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .api-row{display:flex;gap:.5rem;margin:.5rem 0 .4rem}
 .api-row input{
-  flex:1;background:var(--surf2);border:1px solid var(--border);
-  border-radius:var(--rs);padding:.55rem .75rem;
-  color:var(--txt);font-family:var(--mono);font-size:.82rem;outline:none;
-  transition:border-color .2s;-webkit-appearance:none;
+  flex:1;background:var(--surf2);border:1px solid var(--border);border-radius:var(--rs);
+  padding:.55rem .75rem;color:var(--txt);font-family:var(--mono);
+  font-size:16px; /* prevents iOS zoom */
+  outline:none;-webkit-appearance:none
 }
 .api-row input:focus{border-color:var(--borderacc)}
 #api-status{display:block;font-family:var(--mono);font-size:.68rem;color:var(--muted)}
 #api-status.ok{color:var(--green)}
 
-/* Buttons */
-.btn-primary{
-  display:flex;align-items:center;justify-content:center;gap:.6rem;
-  background:var(--acc);color:#0a0a0f;
-  border:none;border-radius:var(--r);padding:.85rem 1.8rem;
-  font-family:var(--font);font-size:1rem;font-weight:700;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;
-  transition:transform .15s,box-shadow .15s;
-  animation:fadeUp .5s .38s ease both;
-  width:100%;max-width:280px;
-}
-.btn-primary:active{transform:scale(.97)}
-.btn-ghost{
-  background:transparent;border:1px solid var(--border);
-  border-radius:var(--rs);padding:.5rem 1rem;
-  color:var(--muted);font-family:var(--font);font-size:.82rem;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;
-  transition:border-color .2s,color .2s;
-}
+.btn-primary{display:flex;align-items:center;justify-content:center;gap:.6rem;background:var(--acc);color:#0a0a0f;border:none;border-radius:var(--r);padding:.85rem 1.8rem;font-family:var(--font);font-size:1rem;font-weight:700;cursor:pointer;width:100%;max-width:280px;-webkit-tap-highlight-color:transparent}
+.btn-primary:active{opacity:.82}
+.btn-ghost{background:transparent;border:1px solid var(--border);border-radius:var(--rs);padding:.5rem 1rem;color:var(--muted);font-family:var(--font);font-size:.82rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .btn-ghost:active{border-color:rgba(255,255,255,.2);color:var(--txt)}
-.btn-danger{
-  display:flex;align-items:center;gap:.4rem;
-  background:var(--red);color:#fff;border:none;
-  border-radius:var(--rs);padding:.45rem 1rem;
-  font-family:var(--font);font-size:.82rem;font-weight:600;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;
-  transition:opacity .2s;
-}
+.btn-danger{display:flex;align-items:center;gap:.4rem;background:var(--red);color:#fff;border:none;border-radius:var(--rs);padding:.45rem 1rem;font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .btn-danger:disabled{opacity:.3;pointer-events:none}
 .btn-danger:active{opacity:.8}
 .btn-sm{font-size:.78rem;padding:.38rem .8rem}
 
-/* iOS file button – label[for] is the only reliable iOS trigger */
-.ios-file-btn{
-  display:flex;align-items:center;justify-content:center;gap:.6rem;
-  background:var(--acc);color:#0a0a0f;
-  border:none;border-radius:var(--r);padding:.85rem 1.8rem;
-  font-family:var(--font);font-size:1rem;font-weight:700;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;
-  width:100%;max-width:280px;box-sizing:border-box;
-  transition:transform .15s,opacity .15s;
-  animation:fadeUp .5s .38s ease both;
-  user-select:none;-webkit-user-select:none;
-}
-.ios-file-btn:active{ transform:scale(.97); opacity:.85; }
+/* label[for] file button */
+.ios-file-btn{display:flex;align-items:center;justify-content:center;gap:.6rem;background:var(--acc);color:#0a0a0f;border:none;border-radius:var(--r);padding:.85rem 1.8rem;font-family:var(--font);font-size:1rem;font-weight:700;cursor:pointer;width:100%;max-width:280px;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;animation:fadeUp .5s .38s ease both}
+.ios-file-btn:active{opacity:.82}
 
-.ios-tip{
-  width:100%;max-width:340px;
-  background:var(--surf);border:1px solid var(--border);
-  border-radius:var(--r);padding:1rem 1.1rem;text-align:left;
-  animation:fadeUp .5s .45s ease both;
-}
+.ios-tip{width:100%;max-width:340px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;text-align:left;animation:fadeUp .5s .45s ease both}
 .ios-tip-title{font-size:.8rem;font-weight:700;margin-bottom:.5rem}
 .ios-tip ol{padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
 .ios-tip li{font-size:.75rem;color:var(--muted);line-height:1.5}
 .ios-tip li strong{color:var(--acc)}
-.ios-tip-note{
-  font-family:var(--mono);font-size:.65rem;color:var(--muted);
-  border-top:1px solid var(--border);margin-top:.7rem;padding-top:.6rem;line-height:1.5;
-}
-.mode-badge{
-  font-family:var(--mono);font-size:.7rem;
-  padding:.35rem .85rem;border-radius:100px;border:1px solid;
-  display:inline-block;animation:fadeUp .5s .05s ease both;
-}
-.mode-desktop{background:rgba(105,240,174,.1);border-color:rgba(105,240,174,.3);color:var(--green)}
+.ios-tip-note{font-family:var(--mono);font-size:.65rem;color:var(--muted);border-top:1px solid var(--border);margin-top:.7rem;padding-top:.6rem;line-height:1.5}
+.mode-badge{font-family:var(--mono);font-size:.7rem;padding:.35rem .85rem;border-radius:100px;border:1px solid;display:inline-block;animation:fadeUp .5s .05s ease both}
 .mode-ios{background:rgba(79,195,247,.1);border-color:rgba(79,195,247,.3);color:var(--blue)}
-.fs-note{font-family:var(--mono);font-size:.68rem;color:var(--muted);animation:fadeUp .5s .5s ease both}
+.mode-desktop{background:rgba(105,240,174,.1);border-color:rgba(105,240,174,.3);color:var(--green)}
+.fs-note{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
 
-/* ══ SCAN SCREEN ══ */
+/* SCAN */
 #s-scan{align-items:center;justify-content:center;background:var(--bg)}
 .scan-wrap{display:flex;flex-direction:column;align-items:center;gap:1.5rem;padding:2rem;max-width:360px;width:100%}
 .scan-grid-box{width:180px;height:180px;position:relative;overflow:hidden;border-radius:var(--r)}
-.scan-cells{
-  width:100%;height:100%;
-  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);
-  gap:3px;background:var(--surf2);
-}
+.scan-cells{width:100%;height:100%;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:3px;background:var(--surf2)}
 .scell{background:var(--surf2);border-radius:3px;transition:background .25s}
 .scell.lit{background:var(--acc)}
-.scan-line{
-  position:absolute;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,var(--acc),transparent);
-  box-shadow:0 0 10px var(--acc);
-  animation:scanline 1.8s linear infinite;z-index:2;
-}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--acc),transparent);box-shadow:0 0 10px var(--acc);animation:scanline 1.8s linear infinite;z-index:2}
 @keyframes scanline{from{top:0;opacity:1}to{top:100%;opacity:.2}}
 #s-scan h2{font-size:1.2rem;font-weight:700;text-align:center}
 .prog-track{width:100%;height:4px;background:var(--surf2);border-radius:100px;overflow:hidden}
@@ -178,117 +102,75 @@ h1 .acc{color:var(--acc)}
 #scan-status{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
 #scan-stats{font-family:var(--mono);font-size:.72rem;color:var(--muted);text-align:center;min-height:2rem}
 
-/* ══ RESULTS SCREEN ══ */
-#s-results{background:var(--bg);display:flex;flex-direction:column}
-.res-header{
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
-  padding:.9rem 1.25rem;border-bottom:1px solid var(--border);
-  background:rgba(10,10,15,.95);backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);flex-shrink:0;
-  position:sticky;top:0;z-index:10;
-}
+/* RESULTS – flex column, only .groups scrolls */
+#s-results{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.res-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:rgba(10,10,15,.98);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);flex-shrink:0}
 .logo-sm{font-size:1.1rem;font-weight:800}.logo-sm .acc{color:var(--acc)}
 #hdr-stats{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
 .hdr-right{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
 
-.toolbar{
-  display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;
-  padding:.65rem 1.25rem;border-bottom:1px solid var(--border);
-  background:var(--surf);flex-shrink:0;
-}
+.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.65rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surf);flex-shrink:0}
 .tabs{display:flex;flex-wrap:wrap;gap:.3rem;flex:1}
-.tab{
-  background:transparent;border:1px solid var(--border);
-  border-radius:100px;padding:.3rem .75rem;
-  color:var(--muted);font-family:var(--font);font-size:.75rem;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s;
-}
+.tab{background:transparent;border:1px solid var(--border);border-radius:100px;padding:.3rem .75rem;color:var(--muted);font-family:var(--font);font-size:.75rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tab:active{background:var(--surf2)}
 .tab.on{background:var(--accDim);border-color:var(--borderacc);color:var(--acc)}
-.thresh-row{display:flex;align-items:center;gap:.5rem}
-#thresh-slider{width:90px;accent-color:var(--acc)}
 
-.global-bar{
-  display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;
-  padding:.55rem 1.25rem;border-bottom:1px solid var(--border);
-  background:rgba(232,255,71,.03);flex-shrink:0;
-}
-.act-btn{
-  background:transparent;border:1px solid var(--border);
-  border-radius:var(--rs);padding:.28rem .65rem;
-  color:var(--muted);font-family:var(--mono);font-size:.68rem;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s;
-}
-.act-btn:active{border-color:rgba(255,255,255,.2);color:var(--txt)}
-.act-btn.danger:active{border-color:var(--red);color:var(--red)}
+.global-bar{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.55rem 1.25rem;border-bottom:1px solid var(--border);background:rgba(232,255,71,.03);flex-shrink:0}
+.act-btn{background:transparent;border:1px solid var(--border);border-radius:var(--rs);padding:.3rem .7rem;color:var(--muted);font-family:var(--mono);font-size:.68rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.act-btn:active{border-color:rgba(255,255,255,.25);color:var(--txt)}
 #global-count{font-family:var(--mono);font-size:.68rem;color:var(--acc)}
 
-.groups{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem;display:flex;flex-direction:column;gap:1.25rem}
+/* scroll on groups only – this is the key iOS fix */
+.groups{flex:1;overflow-y:scroll;-webkit-overflow-scrolling:touch;padding:1rem;display:flex;flex-direction:column;gap:1rem}
 
-/* Group card */
-.gcard{
-  background:var(--surf);border:1px solid var(--border);
-  border-radius:var(--r);overflow:hidden;
-  min-height:60px; /* prevents collapse when images haven't loaded */
-}
-.gcard-head{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.8rem 1.1rem;cursor:pointer;user-select:none;
-  -webkit-tap-highlight-color:transparent;
-  min-height:52px; /* always visible even without images */
-}
-.gbadge{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;padding:.2rem .55rem;border-radius:100px;text-transform:uppercase;white-space:nowrap}
+/* GROUP CARD */
+.gcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.gcard-head{display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:52px}
+.gcard-head:active{background:rgba(255,255,255,.03)}
+.gbadge{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;padding:.2rem .55rem;border-radius:100px;text-transform:uppercase;white-space:nowrap;flex-shrink:0}
 .badge-hash{background:rgba(255,71,87,.15);color:var(--red)}
 .badge-visual{background:rgba(79,195,247,.15);color:var(--blue)}
 .badge-ai{background:rgba(179,136,255,.15);color:var(--purple)}
 .gtitle{flex:1;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gmeta{font-family:var(--mono);font-size:.68rem;color:var(--muted);white-space:nowrap}
-.gtoggle{color:var(--muted);transition:transform .2s;flex-shrink:0}
+.gmeta{font-family:var(--mono);font-size:.68rem;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.gtoggle{color:var(--muted);flex-shrink:0;font-size:.8rem;transition:transform .2s}
 .gcard.collapsed .gtoggle{transform:rotate(-90deg)}
 .gcard.collapsed .gimg-grid,.gcard.collapsed .gai-desc,.gcard.collapsed .gactions{display:none}
 
-.gimg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px;background:var(--border);padding:2px}
-.img-item{position:relative;height:120px;overflow:hidden;background:var(--surf2);cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:6px}
-.img-item img{width:100%;height:100%;object-fit:cover;display:block;border-radius:6px}
+/* IMAGE GRID – flexbox with explicit px height, works reliably on iOS */
+.gimg-grid{display:flex;flex-wrap:wrap;gap:4px;padding:8px}
+.img-item{
+  position:relative;
+  width:calc(50% - 2px); /* 2 columns, explicit calc */
+  height:140px;          /* explicit px, no aspect-ratio */
+  overflow:hidden;background:var(--surf2);border-radius:8px;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;flex-shrink:0
+}
+/* absolute inset on img – most reliable cross-Safari fill */
+.img-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .img-item.keep{outline:3px solid var(--acc);outline-offset:-3px}
 .img-item.del{outline:3px solid var(--red);outline-offset:-3px}
-.img-item.del img{filter:brightness(.55)}
-.best-tag{
-  position:absolute;top:.35rem;right:.35rem;
-  background:var(--acc);color:#0a0a0f;
-  font-family:var(--mono);font-size:.58rem;font-weight:700;
-  padding:.12rem .38rem;border-radius:4px;
-}
-.img-info{
-  position:absolute;bottom:0;left:0;right:0;
-  background:linear-gradient(transparent,rgba(0,0,0,.7));
-  padding:.4rem .4rem .35rem;
-  display:flex;flex-direction:column;gap:.1rem;
-}
-.img-name{font-family:var(--mono);font-size:.6rem;color:rgba(255,255,255,.8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.img-size{font-family:var(--mono);font-size:.56rem;color:rgba(255,255,255,.5)}
-.img-btns{
-  position:absolute;top:.35rem;left:.35rem;
-  display:flex;gap:.25rem;
-  opacity:1; /* always visible on touch – no hover on iOS */
-}
-.ib{border:none;border-radius:5px;padding:.2rem .4rem;font-family:var(--mono);font-size:.6rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.img-item.del img{filter:brightness(.5)}
+.best-tag{position:absolute;top:.35rem;right:.35rem;background:var(--acc);color:#0a0a0f;font-family:var(--mono);font-size:.58rem;font-weight:700;padding:.12rem .38rem;border-radius:4px;z-index:2}
+.img-info{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.75));padding:.5rem .4rem .3rem;z-index:2}
+.img-name{font-family:var(--mono);font-size:.6rem;color:rgba(255,255,255,.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.img-size{font-family:var(--mono);font-size:.56rem;color:rgba(255,255,255,.5);display:block}
+.img-btns{position:absolute;top:.35rem;left:.35rem;display:flex;gap:.25rem;z-index:3}
+.ib{border:none;border-radius:5px;padding:.25rem .45rem;font-family:var(--mono);font-size:.6rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1}
 .ib-keep{background:var(--acc);color:#0a0a0f}
-.ib-del{background:var(--redDim);color:var(--red);border:1px solid var(--red)}
-
-.gai-desc{padding:.6rem 1.1rem;font-size:.8rem;color:var(--muted);font-style:italic;background:rgba(179,136,255,.05);border-top:1px solid var(--border)}
-.gactions{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.6rem 1.1rem;border-top:1px solid var(--border)}
-.gactions .mono-lbl{flex:0 0 auto;margin-right:.1rem}
-
+.ib-del{background:rgba(255,71,87,.2);color:var(--red);border:1px solid var(--red)}
+.gai-desc{padding:.6rem 1rem;font-size:.78rem;color:var(--muted);font-style:italic;background:rgba(179,136,255,.05);border-top:1px solid var(--border)}
+.gactions{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.6rem 1rem;border-top:1px solid var(--border)}
 .empty{display:flex;flex-direction:column;align-items:center;padding:4rem 2rem;gap:1rem;color:var(--muted);text-align:center}
 .empty-icon{font-size:2.5rem;opacity:.4}
 
-/* ══ MODAL ══ */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:100;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .modal.hidden{display:none}
-.mbox{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;max-width:440px;width:90%;max-height:85vh;overflow-y:auto;animation:scaleIn .18s ease}
+.mbox{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;max-width:440px;width:90%;max-height:80vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .mbox h3{font-size:1.1rem;margin-bottom:.65rem}
 .mbox p{color:var(--muted);font-size:.87rem;margin-bottom:.75rem}
-.mfiles{max-height:160px;overflow-y:auto;background:var(--surf2);border-radius:var(--rs);padding:.65rem;margin-bottom:1.25rem}
+.mfiles{max-height:150px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--surf2);border-radius:var(--rs);padding:.65rem;margin-bottom:1.25rem}
 .mfile{font-family:var(--mono);font-size:.7rem;color:var(--muted);padding:.15rem 0}
 .mactions{display:flex;justify-content:flex-end;gap:.65rem;flex-wrap:wrap}
 .ios-steps-modal{background:var(--surf2);border-radius:var(--rs);padding:.8rem 1rem;margin-bottom:1.25rem;font-size:.8rem;color:var(--muted)}
@@ -297,77 +179,50 @@ h1 .acc{color:var(--acc)}
 .ios-steps-modal li{margin:.25rem 0;line-height:1.5}
 .ios-steps-modal strong{color:var(--blue)}
 
-/* ══ TOAST ══ */
-.toast{
-  position:fixed;bottom:calc(1.5rem + env(safe-area-inset-bottom));left:50%;
-  transform:translateX(-50%);
-  background:var(--surf2);border:1px solid var(--border);
-  padding:.6rem 1.25rem;border-radius:100px;
-  font-family:var(--mono);font-size:.77rem;
-  z-index:200;white-space:nowrap;animation:toastIn .25s ease;
-}
+/* TOAST – safe area aware */
+.toast{position:fixed;bottom:max(1.5rem,calc(env(safe-area-inset-bottom) + .5rem));left:50%;transform:translateX(-50%);background:var(--surf2);border:1px solid var(--border);padding:.6rem 1.25rem;border-radius:100px;font-family:var(--mono);font-size:.77rem;z-index:200;white-space:nowrap}
 .toast.hidden{display:none}
 .toast.ok{border-color:var(--green);color:var(--green)}
 .toast.err{border-color:var(--red);color:var(--red)}
 
-/* ══ ANIMATIONS ══ */
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-@keyframes scaleIn{from{transform:scale(.93);opacity:0}to{transform:scale(1);opacity:1}}
-@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-
-/* ══ RESPONSIVE ══ */
-@media(max-width:480px){
-  .gimg-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
-  .res-header{padding:.75rem 1rem}
-  .toolbar,.global-bar{padding:.55rem 1rem}
-  .groups{padding:1rem}
-}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
 
-<!-- ══ SCREEN: LANDING ══ -->
+<!-- LANDING -->
 <div id="s-land" class="screen active">
-  <div class="land-bg">
-    <div class="grid-lines"></div>
-    <div class="orb orb1"></div>
-    <div class="orb orb2"></div>
-  </div>
+  <div class="land-bg"><div class="grid-lines"></div><div class="orb orb1"></div><div class="orb orb2"></div></div>
   <div class="land-body">
-    <div class="logo-icon">
-      <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
-        <rect x="4" y="4" width="18" height="18" rx="3" fill="#e8ff47"/>
-        <rect x="26" y="4" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
-        <rect x="4" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
-        <rect x="26" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".3"/>
-        <path d="M15 15 L33 33" stroke="#e8ff47" stroke-width="2" stroke-dasharray="3 3"/>
-      </svg>
-    </div>
+    <svg width="44" height="44" viewBox="0 0 48 48" fill="none" style="animation:fadeUp .5s ease both">
+      <rect x="4" y="4" width="18" height="18" rx="3" fill="#e8ff47"/>
+      <rect x="26" y="4" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
+      <rect x="4" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
+      <rect x="26" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".3"/>
+      <path d="M15 15 L33 33" stroke="#e8ff47" stroke-width="2" stroke-dasharray="3 3"/>
+    </svg>
     <h1>Foto<span class="acc">Sort</span></h1>
-    <p class="tagline">Ähnliche Bilder erkennen.<br>Das Beste behalten. Den Rest löschen.</p>
+    <p class="tagline">Ähnliche Bilder erkennen.<br/>Das Beste behalten. Den Rest löschen.</p>
     <div class="pills">
-      <span class="pill">⚡ Perceptual Hash</span>
       <span class="pill">🤖 Claude KI</span>
-      <span class="pill">🗑 Löschen</span>
+      <span class="pill">📱 iOS optimiert</span>
+      <span class="pill">🗑 Löschliste</span>
     </div>
-
     <div class="api-box">
       <span class="mono-lbl">Anthropic API Key <span style="color:var(--acc)">← erforderlich</span></span>
       <div class="api-row">
-        <input type="password" id="api-key" placeholder="sk-ant-…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <input type="password" id="api-key" placeholder="sk-ant-…"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
         <button class="btn-ghost" id="btn-save-key">Speichern</button>
       </div>
-      <span id="api-status">Claude analysiert deine Bilder – kein lokales Rechnen nötig</span>
+      <span id="api-status">Claude analysiert deine Bilder</span>
     </div>
-
-    <!-- Injected by JS: either folder-btn or file-input-wrap -->
-    <div id="open-area"></div>
-
+    <div id="open-area" style="display:contents"></div>
     <p class="fs-note" id="fs-note"></p>
   </div>
 </div>
 
-<!-- ══ SCREEN: SCANNING ══ -->
+<!-- SCANNING -->
 <div id="s-scan" class="screen">
   <div class="scan-wrap">
     <div class="scan-grid-box">
@@ -378,26 +233,22 @@ h1 .acc{color:var(--acc)}
     <div class="prog-track"><div class="prog-fill" id="prog"></div></div>
     <span id="scan-status" class="mono-lbl">0 / 0</span>
     <div id="scan-stats"></div>
-    <button class="btn-ghost" id="btn-cancel">Abbrechen</button>
+    <button class="btn-ghost" id="btn-cancel" style="margin-top:1rem">Abbrechen</button>
   </div>
 </div>
 
-<!-- ══ SCREEN: RESULTS ══ -->
+<!-- RESULTS -->
 <div id="s-results" class="screen">
   <div class="res-header">
-    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;min-width:0">
       <span class="logo-sm">Foto<span class="acc">Sort</span></span>
       <span id="hdr-stats"></span>
     </div>
     <div class="hdr-right">
       <button class="btn-ghost btn-sm" id="btn-rescan">↩ Neu</button>
-      <button class="btn-danger btn-sm" id="btn-del" disabled>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-        <span id="del-label">Löschen (0)</span>
-      </button>
+      <button class="btn-danger btn-sm" id="btn-del" disabled>🗑 <span id="del-label">Löschliste (0)</span></button>
     </div>
   </div>
-
   <div class="toolbar">
     <div class="tabs">
       <button class="tab on" data-f="all">Alle</button>
@@ -406,96 +257,56 @@ h1 .acc{color:var(--acc)}
       <button class="tab" data-f="ai">KI</button>
     </div>
   </div>
-
   <div class="global-bar">
-    <span class="mono-lbl" style="flex:0 0 auto">Alle sichtbaren:</span>
+    <span class="mono-lbl" style="flex-shrink:0">Alle:</span>
     <button class="act-btn" id="btn-all-best">⭐ Bestes behalten</button>
-    <button class="act-btn danger" id="btn-all-rest">🗑 Rest markieren</button>
+    <button class="act-btn" id="btn-all-rest">🗑 Rest markieren</button>
     <button class="act-btn" id="btn-all-reset">✕ Reset</button>
     <span id="global-count"></span>
   </div>
-
   <div class="groups" id="groups"></div>
 </div>
 
-<!-- ══ MODAL ══ -->
+<!-- MODAL -->
 <div class="modal hidden" id="modal">
   <div class="mbox">
-    <h3 id="m-title">Löschen</h3>
+    <h3 id="m-title">Löschliste</h3>
     <p id="m-text"></p>
     <div class="mfiles" id="m-files"></div>
     <div id="m-ios-steps" class="ios-steps-modal" style="display:none"></div>
     <div class="mactions">
       <button class="btn-ghost" id="m-cancel">Abbrechen</button>
       <button class="btn-danger" id="m-confirm" style="display:none">Ja, löschen</button>
-      <button class="btn-primary btn-sm" id="m-export" style="display:none">📋 Liste kopieren</button>
+      <button class="btn-primary btn-sm" id="m-export" style="display:none;font-size:.85rem">📋 Liste kopieren</button>
     </div>
   </div>
 </div>
-
 <div class="toast hidden" id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════
-//  PLATFORM DETECTION
-// ═══════════════════════════════════════════
-const HAS_DIR = 'showDirectoryPicker' in window;
-const IS_IOS  = /ipad|iphone|ipod/i.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+'use strict';
+const HAS_DIR  = 'showDirectoryPicker' in window;
 const FALLBACK = !HAS_DIR;
 
-// ═══════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════
 const S = {
   apiKey: localStorage.getItem('fs_key') || '',
-  handles: [],      // FileSystemFileHandle[]
-  files:   [],      // File[] (fallback)
-  imgs:    [],      // analysed image records
-  groups:  [],
-  del:     new Set(),
-  filter:  'all',
-  thresh:  8,
-  abort:   false,
+  handles:[],imgs:[],groups:[],del:new Set(),filter:'all',abort:false
 };
 
-// ═══════════════════════════════════════════
-//  SCREEN SWITCH  ← single source of truth
-// ═══════════════════════════════════════════
 function show(id) {
-  document.querySelectorAll('.screen').forEach(s => {
-    const on = s.id === id;
-    s.classList.toggle('active', on);
-  });
-  // force scroll to top on results
-  if (id === 's-results') {
-    const el = document.getElementById('groups');
-    if (el) el.scrollTop = 0;
-  }
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  if (id === 's-results') { const g = document.getElementById('groups'); if (g) g.scrollTop = 0; }
 }
 
-// ═══════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════
-(function init() {
-  // restore api key
-  if (S.apiKey) {
-    document.getElementById('api-key').value = S.apiKey;
-    setApiStatus('✓ Gespeichert', true);
-  }
-
-  // build open-area based on platform
+// ── INIT ────────────────────────────────────────────
+(function(){
+  if (S.apiKey) { document.getElementById('api-key').value = S.apiKey; setApiStatus('✓ Gespeichert', true); }
   const area = document.getElementById('open-area');
-  const note  = document.getElementById('fs-note');
-
   if (FALLBACK) {
-    // iOS / Safari – <label for> is the ONLY reliably working approach on iOS
-    // button.click() / input.click() are blocked by iOS security policy
     area.innerHTML = `
-      <div class="mode-badge mode-ios" style="margin-bottom:.25rem">📱 iOS/Safari Modus</div>
-      <input type="file" id="file-in" accept="image/*" multiple style="
-        position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;
-      "/>
+      <div class="mode-badge mode-ios">📱 iOS/Safari Modus</div>
+      <input type="file" id="file-in" accept="image/*" multiple
+        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;top:0;left:0"/>
       <label for="file-in" class="ios-file-btn">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
@@ -505,776 +316,300 @@ function show(id) {
       <div class="ios-tip">
         <div class="ios-tip-title">💡 Viele Bilder auswählen</div>
         <ol>
-          <li>Auf „Bilder auswählen" tippen</li>
-          <li>Im Picker: erstes Foto antippen &amp; <strong>wischen</strong> für Mehrfachauswahl</li>
-          <li>Oder: lang gedrückt halten, dann weitere antippen</li>
+          <li>„Bilder auswählen" tippen</li>
+          <li>Erstes Foto antippen &amp; <strong>wischen</strong> → Mehrfachauswahl</li>
+          <li>Oder lang gedrückt halten, dann weitere antippen</li>
         </ol>
-        <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ (Löschliste wird exportiert)</div>
+        <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ → Löschliste für Kurzbefehl-App</div>
       </div>`;
-    note.textContent = '';
     document.getElementById('file-in').addEventListener('change', onFileInput);
   } else {
-    // Desktop Chrome/Edge
     area.innerHTML = `
-      <div class="mode-badge mode-desktop" style="margin-bottom:.25rem">🖥 Desktop Modus – echtes Löschen ✓</div>
+      <div class="mode-badge mode-desktop">🖥 Desktop – echtes Löschen ✓</div>
       <button class="btn-primary" id="btn-folder">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>
         Ordner öffnen
       </button>`;
-    note.textContent = 'Benötigt Chrome / Edge';
+    document.getElementById('fs-note').textContent = 'Benötigt Chrome / Edge';
     document.getElementById('btn-folder').addEventListener('click', onOpenFolder);
   }
-
-  // init scan cells
-  const cellBox = document.getElementById('scan-cells');
-  for (let i = 0; i < 25; i++) {
-    const c = document.createElement('div');
-    c.className = 'scell';
-    cellBox.appendChild(c);
-  }
+  const box = document.getElementById('scan-cells');
+  for (let i = 0; i < 25; i++) { const c = document.createElement('div'); c.className='scell'; box.appendChild(c); }
 })();
 
-// ═══════════════════════════════════════════
-//  BUTTON WIRING
-// ═══════════════════════════════════════════
+// ── WIRING ──────────────────────────────────────────
 document.getElementById('btn-save-key').addEventListener('click', saveApiKey);
-document.getElementById('btn-cancel').addEventListener('click', () => { S.abort = true; show('s-land'); });
+document.getElementById('btn-cancel').addEventListener('click', ()=>{ S.abort=true; show('s-land'); });
 document.getElementById('btn-rescan').addEventListener('click', resetAll);
 document.getElementById('btn-del').addEventListener('click', openModal);
-document.getElementById('m-cancel').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
+document.getElementById('m-cancel').addEventListener('click', ()=>document.getElementById('modal').classList.add('hidden'));
 document.getElementById('m-confirm').addEventListener('click', execDelete);
 document.getElementById('m-export').addEventListener('click', exportList);
-// thresh-slider removed (Claude API mode doesn't need it)
-
-document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
-  b.classList.add('on');
-  S.filter = b.dataset.f;
-  renderGroups();
+document.getElementById('btn-all-best').addEventListener('click', ()=>globalAct('best'));
+document.getElementById('btn-all-rest').addEventListener('click', ()=>globalAct('rest'));
+document.getElementById('btn-all-reset').addEventListener('click', ()=>globalAct('reset'));
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', ()=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  b.classList.add('on'); S.filter=b.dataset.f; renderGroups();
 }));
-document.getElementById('btn-all-best').addEventListener('click',  () => globalAct('best'));
-document.getElementById('btn-all-rest').addEventListener('click',  () => globalAct('rest'));
-document.getElementById('btn-all-reset').addEventListener('click', () => globalAct('reset'));
 
-// ═══════════════════════════════════════════
-//  API KEY
-// ═══════════════════════════════════════════
+// ── API KEY ──────────────────────────────────────────
 function saveApiKey() {
   const v = document.getElementById('api-key').value.trim();
-  if (v.startsWith('sk-')) {
-    S.apiKey = v;
-    localStorage.setItem('fs_key', v);
-    setApiStatus('✓ Gespeichert', true);
-    toast('API Key gespeichert', 'ok');
-  } else {
-    toast('Ungültiger Key', 'err');
-  }
+  if (v.startsWith('sk-')) { S.apiKey=v; localStorage.setItem('fs_key',v); setApiStatus('✓ Gespeichert',true); toast('API Key gespeichert','ok'); }
+  else toast('Ungültiger Key – muss mit sk- beginnen','err');
 }
-function setApiStatus(txt, ok) {
-  const el = document.getElementById('api-status');
-  el.textContent = txt;
-  el.className = ok ? 'ok' : '';
-}
+function setApiStatus(txt,ok) { const el=document.getElementById('api-status'); el.textContent=txt; el.className=ok?'ok':''; }
 
-// ═══════════════════════════════════════════
-//  FILE LOADING
-// ═══════════════════════════════════════════
+// ── FILE LOADING ────────────────────────────────────
 async function onOpenFolder() {
   try {
-    const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
-    S.handles = []; S.imgs = []; S.groups = []; S.del.clear();
-    await collectDir(dir, S.handles);
-    if (!S.handles.length) { toast('Keine Bilder gefunden', 'err'); return; }
+    const dir = await window.showDirectoryPicker({mode:'readwrite'});
+    resetState(); await collectDir(dir,S.handles);
+    if (!S.handles.length) { toast('Keine Bilder gefunden','err'); return; }
     show('s-scan');
-    await runDesktop();
-  } catch(e) {
-    if (e.name !== 'AbortError') toast('Fehler: ' + e.message, 'err');
+    await runPipeline(S.handles.length, i=>S.handles[i].getFile().then(f=>mkRecord(f,S.handles[i])));
+  } catch(e) { if (e.name!=='AbortError') toast('Fehler: '+e.message,'err'); }
+}
+async function collectDir(dir,list,depth=0) {
+  if (depth>3) return;
+  for await (const[,e] of dir) {
+    if (e.kind==='file'&&/\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(e.name)) list.push(e);
+    else if (e.kind==='directory') await collectDir(e,list,depth+1);
   }
 }
 
-async function collectDir(dir, list, depth=0) {
-  if (depth > 3) return;
-  for await (const [,e] of dir) {
-    if (e.kind === 'file' && /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(e.name))
-      list.push(e);
-    else if (e.kind === 'directory')
-      await collectDir(e, list, depth+1);
-  }
-}
-
-let _scanRunning = false;
-async function onFileInput(e) {
-  if (_scanRunning) return; // prevent double-fire from change+input
-  const files = [...(e.target.files || [])].filter(f =>
-    f.type.startsWith('image/') ||
-    /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif|tiff?)$/i.test(f.name)
-  );
-  if (!files.length) { toast('Keine Bilder ausgewählt', 'err'); return; }
-  _scanRunning = true;
-  toast(`${files.length} Bilder werden geladen…`);
-  S.files = files; S.imgs = []; S.groups = []; S.del.clear();
-  // Small delay so toast renders before heavy work starts
-  await new Promise(r => setTimeout(r, 80));
+let _running=false;
+async function onFileInput(evt) {
+  if (_running) return;
+  const files=[...(evt.target.files||[])].filter(f=>f.type.startsWith('image/')||/\.(jpe?g|png|gif|webp|heic|heif|bmp|avif|tiff?)$/i.test(f.name));
+  if (!files.length) { toast('Keine Bilder ausgewählt','err'); return; }
+  _running=true; resetState();
+  toast(`${files.length} Bilder geladen`,'ok');
+  await new Promise(r=>setTimeout(r,100));
   show('s-scan');
-  await runFallback(files);
-  _scanRunning = false;
+  await runPipeline(files.length, i=>mkRecord(files[i]));
+  _running=false;
 }
 
-// ═══════════════════════════════════════════
-//  ANALYSIS PIPELINES
-// ═══════════════════════════════════════════
-async function runDesktop() {
-  S.abort = false;
-  const total = S.handles.length;
-  let done = 0;
-  setProgress(0); setScanStatus(`0 / ${total}`); setScanTitle('Bilder analysieren…');
-
-  const BATCH = 8;
-  for (let i = 0; i < total; i += BATCH) {
-    if (S.abort) return;
-    const batch = S.handles.slice(i, Math.min(i + BATCH, total));
-    const files  = await Promise.all(batch.map(h => h.getFile()));
-    const results = await Promise.allSettled(files.map((f, bi) => analyseFile(f, batch[bi])));
-    results.forEach((r, bi) => {
-      if (r.status === 'fulfilled' && r.value) {
-        S.imgs.push(r.value);
-        litCell((done + bi) % 25);
-      }
-    });
-    done += batch.length;
-    setProgress(done / total * 60);
-    setScanStatus(`${done} / ${total} Bilder`);
-    await tick();
-  }
-  await finish();
-}
-
-async function runFallback(files) {
-  S.abort = false;
-  const total = files.length;
-  let done = 0;
-  setProgress(0); setScanStatus(`0 / ${total}`); setScanTitle('Bilder analysieren…');
-
-  // Process in parallel batches of 8 – ~4-6x faster than sequential
-  const BATCH = 8;
-  for (let i = 0; i < total; i += BATCH) {
-    if (S.abort) return;
-    const batch = files.slice(i, Math.min(i + BATCH, total));
-    const results = await Promise.allSettled(batch.map(f => analyseFile(f)));
-    results.forEach((r, bi) => {
-      if (r.status === 'fulfilled' && r.value) {
-        S.imgs.push(r.value);
-        litCell((done + bi) % 25);
-      }
-    });
-    done += batch.length;
-    setProgress(done / total * 60);
-    setScanStatus(`${done} / ${total} Bilder`);
-    await tick(); // yield once per batch instead of per image
-  }
-  await finish();
-}
-
-// Single-image analysis – returns record or null
-async function analyseFile(file, handle = null) {
-  try {
-    const sig  = await signature(file);
-    const exif = await exifDate(file);
-    return { handle, file, ...sig, exif, name: file.name, size: file.size };
-  } catch(e) {
-    console.warn('Skip', file.name, e);
-    return null;
-  }
-}
-
-async function finish() {
-  const n = S.imgs.length;
-
-  if (!S.apiKey) {
-    // No API key – show message and go back
-    show('s-land');
-    setTimeout(() => {
-      document.getElementById('api-key').focus();
-      toast('Bitte zuerst einen Anthropic API Key eingeben', 'err');
-    }, 300);
-    return;
-  }
-
-  setScanTitle('Claude analysiert Bilder…');
-  setScanStatus(`${n} Bilder werden an Claude gesendet`);
-  setProgress(65); await tick();
-
-  // Send all images to Claude in batches of 12
-  // Claude groups them by visual similarity, scene, person, location
-  const BATCH = 12;
-  const allGroups = [];
-  const usedNames = new Set();
-
-  for (let i = 0; i < S.imgs.length; i += BATCH) {
-    if (S.abort) return;
-    const batch = S.imgs.slice(i, Math.min(i + BATCH, S.imgs.length));
-    setScanTitle(`Claude analysiert… (${i+1}–${Math.min(i+BATCH, n)} / ${n})`);
-    setProgress(65 + (i / n) * 30);
-    await tick();
-
-    const groups = await claudeAnalyse(batch, i);
-    // Only keep groups where images haven't been claimed by earlier batches
-    for (const g of groups) {
-      const fresh = g.images.filter(img => !usedNames.has(img.name));
-      if (fresh.length >= 2) {
-        fresh.forEach(img => usedNames.add(img.name));
-        allGroups.push({ ...g, images: fresh });
-      }
-    }
-
-    // Wait between batches to avoid rate limits (Haiku: 5 req/min on free tier)
-    if (i + BATCH < S.imgs.length) {
-      setScanTitle(`Kurze Pause… (${i+BATCH} / ${n} fertig)`);
-      await new Promise(r => setTimeout(r, 3000)); // 3s between batches
-    }
-  }
-
-  setProgress(100);
-  S.groups = allGroups;
-  S.groups.sort((a, b) => b.images.length - a.images.length);
-  await tick();
-  renderAll();
-  show('s-results');
-}
-
-// ═══════════════════════════════════════════
-//  THUMBNAIL GENERATION
-//  Only thumbnails needed – Claude does analysis
-// ═══════════════════════════════════════════
-function signature(file) {
-  return new Promise((res, rej) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
+// ── THUMBNAIL ───────────────────────────────────────
+function mkRecord(file,handle=null) {
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
       try {
-        // 200px thumbnail – large enough to see clearly on retina displays
-        const SIZE = 200;
-        const c = document.createElement('canvas');
-        // Maintain aspect ratio
-        const ratio = img.width / img.height;
-        c.width  = ratio >= 1 ? SIZE : Math.round(SIZE * ratio);
-        c.height = ratio >= 1 ? Math.round(SIZE / ratio) : SIZE;
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        const thumb = c.toDataURL('image/jpeg', 0.7);
+        const SIZE=200, c=document.createElement('canvas');
+        c.width=SIZE; c.height=SIZE;
+        const ctx=c.getContext('2d');
+        const r=img.width/img.height;
+        let sx=0,sy=0,sw=img.width,sh=img.height;
+        if(r>1){sw=img.height;sx=(img.width-sw)/2;}else{sh=img.width;sy=(img.height-sh)/2;}
+        ctx.drawImage(img,sx,sy,sw,sh,0,0,SIZE,SIZE);
+        const thumb=c.toDataURL('image/jpeg',0.72);
         URL.revokeObjectURL(url);
-        // Return stub hash/col so rest of code doesn't break
-        res({ hash: [], col: [], thumb });
-      } catch(e) { URL.revokeObjectURL(url); rej(e); }
+        res({handle,file,thumb,name:file.name,size:file.size});
+      } catch(e){URL.revokeObjectURL(url);rej(e);}
     };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load')); };
-    img.src = url;
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('load'));};
+    img.src=url;
   });
 }
 
-// ═══════════════════════════════════════════
-//  EXIF DATE
-// ═══════════════════════════════════════════
-async function exifDate(file) {
+// ── PIPELINE ────────────────────────────────────────
+async function runPipeline(total,getItem) {
+  S.abort=false;
+  setProgress(0); setScanStatus(`0 / ${total}`); setScanTitle('Vorschaubilder erstellen…');
+  const BATCH=6; let done=0;
+  for (let i=0;i<total;i+=BATCH) {
+    if (S.abort) return;
+    const idx=Array.from({length:Math.min(BATCH,total-i)},(_,k)=>i+k);
+    const res=await Promise.allSettled(idx.map(j=>getItem(j)));
+    res.forEach((r,k)=>{ if(r.status==='fulfilled'&&r.value){S.imgs.push(r.value);litCell((done+k)%25);} });
+    done+=idx.length; setProgress(done/total*55); setScanStatus(`${done} / ${total} Bilder`); await tick();
+  }
+  if (!S.apiKey) { show('s-land'); setTimeout(()=>{document.getElementById('api-key').focus();toast('API Key erforderlich','err');},200); return; }
+
+  const imgs=S.imgs,n=imgs.length,ABATCH=12,allGroups=[],used=new Set();
+  for (let i=0;i<n;i+=ABATCH) {
+    if (S.abort) return;
+    const batch=imgs.slice(i,i+ABATCH);
+    setScanTitle(`Claude analysiert… (${i+1}–${Math.min(i+ABATCH,n)} / ${n})`);
+    setProgress(55+(i/n)*40); await tick();
+    const groups=await claudeAnalyse(batch);
+    for (const g of groups) {
+      const fresh=g.images.filter(img=>!used.has(img.name));
+      if (fresh.length>=2){fresh.forEach(img=>used.add(img.name));allGroups.push({...g,images:fresh});}
+    }
+  }
+  setProgress(100);
+  S.groups=allGroups.sort((a,b)=>b.images.length-a.images.length);
+  await tick(); renderAll(); show('s-results');
+}
+
+// ── CLAUDE API ──────────────────────────────────────
+async function claudeAnalyse(imgs) {
   try {
-    const buf = await file.slice(0, 65536).arrayBuffer();
-    const s = new TextDecoder('ascii',{fatal:false}).decode(buf);
-    const m = s.match(/(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/);
-    if (m) return new Date(m[1].replace(/^(\d{4}):(\d{2}):(\d{2})/,'$1-$2-$3'));
-  } catch {}
-  return null;
-}
-
-// ═══════════════════════════════════════════
-//  GROUPING VIA WEB WORKER
-//  Runs in separate thread → iOS can't freeze it
-//  Worker code is inlined as a Blob URL
-// ═══════════════════════════════════════════
-function hamming(a,b) { let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d; }
-function histDist(a,b) {
-  let x=0; for(let i=0;i<a.length;i++) x+=Math.min(a[i],b[i]);
-  return 1 - x/(a.length/3);
-}
-
-// Inline worker source – runs hamming+histDist comparison off main thread
-const WORKER_SRC = `
-function hamming(a,b){let d=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])d++;return d;}
-function histDist(a,b){let x=0;for(let i=0;i<a.length;i++)x+=Math.min(a[i],b[i]);return 1-x/(a.length/3);}
-
-self.onmessage = function(e) {
-  const {imgs, thresh} = e.data;
-  const n = imgs.length;
-  const hashThresh = 8 + thresh * 1.5;
-  const histThresh = 0.12 + thresh * 0.015;
-  const hashGroups = [], visualGroups = [], usedH = new Set(), usedV = new Set();
-
-  // Hash groups (exact duplicates, dHash ≤ 8)
-  for (let i = 0; i < n; i++) {
-    if (usedH.has(i)) continue;
-    const g = [i];
-    for (let j = i+1; j < n; j++) {
-      if (!usedH.has(j) && hamming(imgs[i].hash, imgs[j].hash) <= 8) {
-        g.push(j); usedH.add(j);
-      }
-    }
-    if (g.length > 1) { usedH.add(i); hashGroups.push(g); }
-    if (i % 10 === 0) self.postMessage({type:'progress', phase:'hash', pct: i/n});
-  }
-
-  // Visual groups
-  for (let i = 0; i < n; i++) {
-    if (usedV.has(i) || usedH.has(i)) continue;
-    const g = [i], sc = [0];
-    for (let j = i+1; j < n; j++) {
-      if (usedV.has(j) || usedH.has(j)) continue;
-      const hd = hamming(imgs[i].hash, imgs[j].hash);
-      if (hd <= 8 || hd > hashThresh) continue;
-      const cd = histDist(imgs[i].col, imgs[j].col);
-      if (cd <= histThresh) { g.push(j); sc.push(Math.round(hd)); usedV.add(j); }
-    }
-    if (g.length > 1) { usedV.add(i); visualGroups.push({indices:g, scores:sc}); }
-    if (i % 10 === 0) self.postMessage({type:'progress', phase:'visual', pct: i/n});
-  }
-
-  self.postMessage({type:'done', hashGroups, visualGroups});
-};
-`;
-
-function runWorker(imgs, thresh) {
-  return new Promise((resolve) => {
-    const blob = new Blob([WORKER_SRC], {type:'application/javascript'});
-    const url  = URL.createObjectURL(blob);
-    const w    = new Worker(url);
-
-    // Strip non-transferable data before sending to worker
-    const lean = imgs.map(img => ({ hash: img.hash, col: img.col }));
-
-    w.onmessage = (e) => {
-      const msg = e.data;
-      if (msg.type === 'progress') {
-        if (msg.phase === 'hash')   setProgress(62 + msg.pct * 8);
-        if (msg.phase === 'visual') setProgress(70 + msg.pct * 18);
-        setScanTitle(msg.phase === 'hash' ? 'Duplikate suchen…' : 'Ähnliche suchen…');
-      } else if (msg.type === 'done') {
-        w.terminate();
-        URL.revokeObjectURL(url);
-
-        const hg = msg.hashGroups.map(indices => ({
-          type: 'hash',
-          images: indices.map(i => imgs[i])
-        }));
-        const vg = msg.visualGroups.map(({indices, scores}) => ({
-          type: 'visual',
-          images: indices.map(i => imgs[i]),
-          scores: indices.map((i, si) => ({img: imgs[i], score: scores[si]}))
-        }));
-        resolve({hg, vg});
-      }
-    };
-
-    w.onerror = (err) => {
-      console.warn('Worker error, falling back:', err);
-      w.terminate();
-      URL.revokeObjectURL(url);
-      // Fallback: run synchronously if Worker fails
-      fallbackGroup(imgs, thresh).then(resolve);
-    };
-
-    w.postMessage({imgs: lean, thresh});
-  });
-}
-
-// Synchronous fallback in case Worker is unavailable
-async function fallbackGroup(imgs, thresh) {
-  const hashThresh = 8 + thresh * 1.5;
-  const histThresh = 0.12 + thresh * 0.015;
-  const hg=[], vg=[], usedH=new Set(), usedV=new Set();
-  const n = imgs.length;
-  for (let i=0;i<n;i++) {
-    if (usedH.has(i)) continue;
-    const g=[imgs[i]];
-    for (let j=i+1;j<n;j++) {
-      if (!usedH.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=8) { g.push(imgs[j]); usedH.add(j); }
-    }
-    if (g.length>1) { usedH.add(i); hg.push({type:'hash',images:g}); }
-    if (i%5===0) { setProgress(62+i/n*8); await new Promise(r=>setTimeout(r,16)); }
-  }
-  for (let i=0;i<n;i++) {
-    if (usedV.has(i)||usedH.has(i)) continue;
-    const g=[imgs[i]],sc=[{img:imgs[i],score:0}];
-    for (let j=i+1;j<n;j++) {
-      if (usedV.has(j)||usedH.has(j)) continue;
-      const hd=hamming(imgs[i].hash,imgs[j].hash);
-      if (hd<=8||hd>hashThresh) continue;
-      if (histDist(imgs[i].col,imgs[j].col)<=histThresh) { g.push(imgs[j]); sc.push({img:imgs[j],score:hd}); usedV.add(j); }
-    }
-    if (g.length>1) { usedV.add(i); vg.push({type:'visual',images:g,scores:sc}); }
-    if (i%5===0) { setProgress(70+i/n*18); await new Promise(r=>setTimeout(r,16)); }
-  }
-  return {hg, vg};
-}
-
-function merge(hg, vg, ag) {
-  const inHash=new Set(hg.flatMap(g=>g.images.map(i=>i.name)));
-  const fv=vg.map(g=>({...g,images:g.images.filter(i=>!inHash.has(i.name))})).filter(g=>g.images.length>1);
-  const inAny=new Set([...hg,...fv].flatMap(g=>g.images.map(i=>i.name)));
-  const fa=ag.map(g=>({...g,images:g.images.filter(i=>!inAny.has(i.name))})).filter(g=>g.images.length>1);
-  return [...hg,...fv,...fa];
-}
-
-// ═══════════════════════════════════════════
-//  AI GROUPING
-// ═══════════════════════════════════════════
-// ═══════════════════════════════════════════
-//  CLAUDE API ANALYSIS
-//  Sends thumbnails to Claude, gets back groups
-// ═══════════════════════════════════════════
-async function claudeAnalyse(imgs, offset = 0) {
-  try {
-    const content = [{
-      type: 'text',
-      text: `Du analysierst ${imgs.length} Fotos aus einer Galerie.
-
-Aufgabe: Finde Fotos die zusammengehören – gleiche Szene, gleicher Moment, ähnliches Motiv, gleiche Person, gleicher Ort, Burst-Aufnahmen, Belichtungsreihen, oder fast identische Bilder.
-
-Antworte NUR mit einem JSON-Array, kein Markdown, keine Erklärung außerhalb des JSON:
-[
-  {"indices": [0, 2, 5], "type": "duplicate", "description": "Fast identische Aufnahmen"},
-  {"indices": [1, 3], "type": "similar", "description": "Gleiche Person, verschiedene Posen"}
-]
-
-type ist: "duplicate" (fast identisch), "similar" (ähnlich/gleiche Szene), "burst" (Schnellaufnahmen).
-Nur Gruppen mit 2+ Bildern. Keine Gruppen gefunden → [].`
-    }];
-
-    imgs.forEach((img, i) => {
-      content.push({ type: 'text', text: `Foto ${i} – ${img.name} (${fmtSize(img.size)}):` });
-      content.push({
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: img.thumb.split(',')[1] }
-      });
+    const content=[{type:'text',text:`Analysiere ${imgs.length} Fotos. Finde Fotos die zusammengehören: gleiche Szene, Moment, Person, Ort, Burst-Aufnahmen, oder fast identische Bilder.\n\nAntworte NUR mit JSON (kein Markdown):\n[{"indices":[0,2],"type":"duplicate","description":"Beschreibung"},...]\n\ntype: "duplicate"=fast identisch, "similar"=ähnliche Szene, "burst"=Schnellaufnahmen.\nNur Gruppen mit 2+ Bildern. Keine Gruppen → []`}];
+    imgs.forEach((img,i)=>{
+      content.push({type:'text',text:`Foto ${i} (${img.name}, ${fmtSize(img.size)}):`});
+      content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:img.thumb.split(',')[1]}});
     });
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': S.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content }]
-      })
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,messages:[{role:'user',content}]})
     });
-
-    if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`API ${resp.status}: ${err}`);
-    }
-
-    const data = await resp.json();
-    const text = data.content.find(b => b.type === 'text')?.text || '[]';
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
-    const typeMap = { duplicate: 'hash', similar: 'visual', burst: 'hash' };
-
-    return parsed
-      .filter(g => Array.isArray(g.indices) && g.indices.length >= 2)
-      .map(g => ({
-        type: typeMap[g.type] || 'ai',
-        aiDesc: g.description,
-        images: g.indices.map(idx => imgs[idx]).filter(Boolean)
-      }))
-      .filter(g => g.images.length >= 2);
-
-  } catch (e) {
-    console.warn('Claude API error:', e);
-    toast('API Fehler: ' + e.message, 'err');
-    return [];
-  }
+    if (!resp.ok){const e=await resp.text();throw new Error(`API ${resp.status}: ${e.substring(0,200)}`);}
+    const data=await resp.json();
+    const txt=data.content.find(b=>b.type==='text')?.text||'[]';
+    const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
+    const tm={duplicate:'hash',similar:'visual',burst:'hash'};
+    return parsed.filter(g=>Array.isArray(g.indices)&&g.indices.length>=2)
+      .map(g=>({type:tm[g.type]||'ai',aiDesc:g.description,images:g.indices.map(idx=>imgs[idx]).filter(Boolean)}))
+      .filter(g=>g.images.length>=2);
+  } catch(e){console.warn('Claude:',e);toast('API Fehler: '+e.message.substring(0,80),'err');return[];}
 }
 
-// ═══════════════════════════════════════════
-//  RENDER
-// ═══════════════════════════════════════════
+// ── RENDER ──────────────────────────────────────────
 function renderAll() {
-  const total=S.imgs.length;
-  const grouped=new Set(S.groups.flatMap(g=>g.images.map(i=>i.name)));
-  document.getElementById('hdr-stats').textContent=
-    `${total} Bilder · ${S.groups.length} Gruppen · ${grouped.size} betroffen`;
+  const total=S.imgs.length,grouped=new Set(S.groups.flatMap(g=>g.images.map(i=>i.name)));
+  document.getElementById('hdr-stats').textContent=`${total} Bilder · ${S.groups.length} Gruppen · ${grouped.size} betroffen`;
   renderGroups();
 }
-
 function renderGroups() {
   const box=document.getElementById('groups');
   box.innerHTML='';
-  const visible=S.groups.filter(g=>S.filter==='all'||g.type===S.filter);
-  if (!visible.length) {
-    box.innerHTML='<div class="empty"><div class="empty-icon">✨</div><p>Keine Gruppen gefunden</p></div>';
-    updateDelBtn(); return;
-  }
-  visible.forEach((g,gi)=>box.appendChild(buildCard(g,gi)));
+  const vis=S.groups.filter(g=>S.filter==='all'||g.type===S.filter);
+  if (!vis.length){box.innerHTML='<div class="empty"><div class="empty-icon">✨</div><p>Keine Gruppen in dieser Kategorie</p></div>';updateDelBtn();return;}
+  vis.forEach(g=>box.appendChild(buildCard(g)));
   updateDelBtn();
 }
-
-function buildCard(g, gi) {
+function buildCard(g) {
   const card=document.createElement('div');
-  card.className='gcard';
-  const bc={hash:'badge-hash',visual:'badge-visual',ai:'badge-ai'}[g.type];
-  const bl={hash:'Duplikat',visual:'Visuell',ai:'KI'}[g.type];
+  card.className='gcard collapsed';
+  const bc={hash:'badge-hash',visual:'badge-visual',ai:'badge-ai'}[g.type]||'badge-ai';
+  const bl={hash:'Duplikat',visual:'Visuell',ai:'KI'}[g.type]||'KI';
   const best=g.images.reduce((a,b)=>b.size>a.size?b:a,g.images[0]);
+  const title=g.aiDesc||g.images.map(i=>i.name).join(', ').substring(0,50);
 
   const head=document.createElement('div');
   head.className='gcard-head';
-  head.innerHTML=`
-    <span class="gbadge ${bc}">${bl}</span>
-    <span class="gtitle">${g.aiDesc||g.images.map(i=>i.name).join(', ').substring(0,50)}</span>
-    <span class="gmeta">${g.images.length} Bilder</span>
-    <span class="gtoggle">▼</span>`;
-  // Start collapsed – user taps to expand
-  // This prevents iOS from trying to render all thumbnails simultaneously
-  card.classList.add('collapsed');
-  head.addEventListener('click', ()=>card.classList.toggle('collapsed'));
+  head.innerHTML=`<span class="gbadge ${bc}">${bl}</span><span class="gtitle" title="${title}">${title}</span><span class="gmeta">${g.images.length} Bilder</span><span class="gtoggle">▶</span>`;
+  head.addEventListener('click',()=>{
+    card.classList.toggle('collapsed');
+    head.querySelector('.gtoggle').textContent=card.classList.contains('collapsed')?'▶':'▼';
+  });
   card.appendChild(head);
 
   const grid=document.createElement('div');
   grid.className='gimg-grid';
   g.images.forEach(img=>{
     const item=document.createElement('div');
-    item.className='img-item' + (S.del.has(img.name)?' del':img.name===best.name?' keep':'');
-    item.innerHTML=`
-      <img src="${img.thumb}" alt="${img.name}" loading="lazy"/>
-      ${img.name===best.name?'<div class="best-tag">BEST</div>':''}
-      <div class="img-info">
-        <span class="img-name">${img.name}</span>
-        <span class="img-size">${fmtSize(img.size)}</span>
-      </div>
-      <div class="img-btns">
-        <button class="ib ib-keep">✓</button>
-        <button class="ib ib-del">✕</button>
-      </div>`;
-    item.querySelector('.ib-keep').addEventListener('click', e=>{
-      e.stopPropagation(); keepOne(g, img.name);
-    });
-    item.querySelector('.ib-del').addEventListener('click', e=>{
-      e.stopPropagation(); toggleDel(img.name);
-    });
+    item.className='img-item'+(S.del.has(img.name)?' del':img.name===best.name?' keep':'');
+    item.dataset.name=img.name;
+    item.innerHTML=`<img src="${img.thumb}" alt="${img.name}" loading="lazy"/>${img.name===best.name?'<div class="best-tag">BEST</div>':''}<div class="img-info"><span class="img-name">${img.name}</span><span class="img-size">${fmtSize(img.size)}</span></div><div class="img-btns"><button class="ib ib-keep">✓</button><button class="ib ib-del">✕</button></div>`;
+    item.querySelector('.ib-keep').addEventListener('click',e=>{e.stopPropagation();keepOne(g,img.name);});
+    item.querySelector('.ib-del').addEventListener('click', e=>{e.stopPropagation();toggleDel(img.name,g);});
     grid.appendChild(item);
   });
   card.appendChild(grid);
 
-  if (g.aiDesc) {
-    const desc=document.createElement('div');
-    desc.className='gai-desc';
-    desc.textContent='🤖 ' + g.aiDesc;
-    card.appendChild(desc);
-  }
+  if (g.aiDesc){const d=document.createElement('div');d.className='gai-desc';d.textContent='🤖 '+g.aiDesc;card.appendChild(d);}
 
   const acts=document.createElement('div');
   acts.className='gactions';
-  acts.innerHTML=`
-    <span class="mono-lbl">Schnell:</span>
-    <button class="act-btn" data-a="best">⭐ Bestes behalten</button>
-    <button class="act-btn danger" data-a="rest">🗑 Rest löschen</button>
-    <button class="act-btn" data-a="reset">✕ Reset</button>`;
-  acts.querySelectorAll('.act-btn').forEach(b=>b.addEventListener('click', ()=>{
-    const a=b.dataset.a;
-    if (a==='best'||a==='rest') keepBest(g);
-    if (a==='reset') resetGroup(g);
+  acts.innerHTML=`<span class="mono-lbl">Schnell:</span><button class="act-btn" data-a="best">⭐ Bestes</button><button class="act-btn" data-a="rest">🗑 Rest</button><button class="act-btn" data-a="reset">✕ Reset</button>`;
+  acts.querySelectorAll('.act-btn').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.a==='best'||b.dataset.a==='rest')keepBest(g);
+    if(b.dataset.a==='reset')resetGroup(g);
   }));
   card.appendChild(acts);
   return card;
 }
 
-// ═══════════════════════════════════════════
-//  SELECTION LOGIC
-// ═══════════════════════════════════════════
-function keepOne(g, name) {
-  g.images.forEach(i => {
-    if (i.name === name) S.del.delete(i.name);
-    else S.del.add(i.name);
-  });
-  updateCardVisuals(g);
-  updateDelBtn();
-}
-
-function keepBest(g) {
-  const best = g.images.reduce((a,b) => b.size > a.size ? b : a, g.images[0]);
-  keepOne(g, best.name);
-}
-
-function resetGroup(g) {
-  g.images.forEach(i => S.del.delete(i.name));
-  updateCardVisuals(g);
-  updateDelBtn();
-}
-
-function toggleDel(name) {
-  S.del.has(name) ? S.del.delete(name) : S.del.add(name);
-  // Find and update just this one item
-  document.querySelectorAll('.img-item').forEach(el => {
-    const nameEl = el.querySelector('.img-name');
-    if (nameEl && nameEl.textContent === name) {
-      el.classList.toggle('del', S.del.has(name));
-      el.classList.toggle('keep', false);
-    }
-  });
-  updateDelBtn();
-}
-
-// Update visual state of all items in a group without full re-render
-function updateCardVisuals(g) {
-  g.images.forEach(img => {
-    document.querySelectorAll('.img-item').forEach(el => {
-      const nameEl = el.querySelector('.img-name');
-      if (nameEl && nameEl.textContent === img.name) {
-        el.classList.toggle('del', S.del.has(img.name));
-        el.classList.toggle('keep', !S.del.has(img.name) && img.name === g.images.reduce((a,b) => b.size > a.size ? b : a, g.images[0]).name);
-      }
+// ── SELECTION (no re-render, direct DOM) ────────────
+function keepOne(g,name){g.images.forEach(i=>{i.name===name?S.del.delete(i.name):S.del.add(i.name);});syncDOM(g);updateDelBtn();}
+function keepBest(g){keepOne(g,g.images.reduce((a,b)=>b.size>a.size?b:a,g.images[0]).name);}
+function resetGroup(g){g.images.forEach(i=>S.del.delete(i.name));syncDOM(g);updateDelBtn();}
+function toggleDel(name,g){S.del.has(name)?S.del.delete(name):S.del.add(name);syncDOM(g);updateDelBtn();}
+function syncDOM(g){
+  const best=g.images.reduce((a,b)=>b.size>a.size?b:a,g.images[0]);
+  g.images.forEach(img=>{
+    document.querySelectorAll(`.img-item[data-name="${CSS.escape(img.name)}"]`).forEach(el=>{
+      el.classList.toggle('del', S.del.has(img.name));
+      el.classList.toggle('keep',!S.del.has(img.name)&&img.name===best.name);
     });
   });
 }
-
-function globalAct(type) {
-  const visible = S.groups.filter(g => S.filter === 'all' || g.type === S.filter);
-  visible.forEach(g => {
-    if (type === 'best' || type === 'rest') keepBest(g);
-    if (type === 'reset') resetGroup(g);
+function globalAct(type){
+  S.groups.filter(g=>S.filter==='all'||g.type===S.filter).forEach(g=>{
+    if(type==='best'||type==='rest')keepBest(g);else resetGroup(g);
   });
-  const n = S.del.size;
-  toast(type === 'reset' ? 'Auswahl zurückgesetzt' : `${n} Bilder markiert`, type === 'reset' ? '' : 'ok');
+  toast(type==='reset'?'Auswahl zurückgesetzt':`${S.del.size} Bilder markiert`,type==='reset'?'':'ok');
 }
-
-function updateDelBtn() {
+function updateDelBtn(){
   const n=S.del.size;
-  document.getElementById('del-label').textContent = FALLBACK?`Löschliste (${n})`:`Löschen (${n})`;
-  document.getElementById('btn-del').disabled = n===0;
+  document.getElementById('del-label').textContent=`Löschliste (${n})`;
+  document.getElementById('btn-del').disabled=n===0;
   const gc=document.getElementById('global-count');
-  gc.textContent = n>0?`${n} markiert`:'';
+  gc.textContent=n>0?`${n} markiert`:'';
 }
 
-// ═══════════════════════════════════════════
-//  RECOMPUTE ON THRESHOLD
-// ═══════════════════════════════════════════
-async function recompute() {
-  // With Claude-API mode, re-running analysis is the only option
-  // Just re-trigger finish with current images
-  await finish();
-}
-
-// ═══════════════════════════════════════════
-//  DELETE / EXPORT
-// ═══════════════════════════════════════════
-function openModal() {
+// ── DELETE / EXPORT ─────────────────────────────────
+function openModal(){
   const list=[...S.del];
   document.getElementById('m-files').innerHTML=list.map(n=>`<div class="mfile">🗑 ${n}</div>`).join('');
-  const steps=document.getElementById('m-ios-steps');
-  const confirm=document.getElementById('m-confirm');
-  const exportBtn=document.getElementById('m-export');
-  if (FALLBACK) {
-    document.getElementById('m-title').textContent='Löschliste';
-    document.getElementById('m-text').innerHTML=`<strong>${list.length}</strong> Bilder zum Löschen markiert.<br>Exportiere die Liste und lösche sie manuell in der Fotos-App.`;
+  const steps=document.getElementById('m-ios-steps'),cb=document.getElementById('m-confirm'),eb=document.getElementById('m-export');
+  if(FALLBACK){
+    document.getElementById('m-title').textContent='Löschliste exportieren';
+    document.getElementById('m-text').innerHTML=`<strong>${list.length}</strong> Bilder markiert.<br>Liste kopieren → Kurzbefehl öffnen.`;
     steps.style.display='block';
-    steps.innerHTML=`<b>Workflow mit Kurzbefehl (empfohlen):</b><ol>
-      <li>Auf <strong>„Liste kopieren"</strong> tippen</li>
-      <li>Kurzbefehl <strong>„FotoSort Löschen"</strong> öffnen</li>
-      <li>Shortcut liest die Liste und löscht automatisch</li></ol>
-      <div style="margin-top:.5rem;font-size:.75rem;opacity:.6">Kurzbefehl noch nicht installiert? Siehe Anleitung auf GitHub.</div>`;
-    confirm.style.display='none';
-    exportBtn.style.display='flex';
+    steps.innerHTML=`<b>Workflow:</b><ol><li>„Liste kopieren" tippen</li><li>Kurzbefehl <strong>„FotoSort Löschen"</strong> öffnen</li><li>Shortcut löscht automatisch</li></ol>`;
+    cb.style.display='none';eb.style.display='flex';
   } else {
     document.getElementById('m-title').textContent='Dateien löschen';
-    document.getElementById('m-text').innerHTML=`Möchtest du <strong>${list.length}</strong> Dateien wirklich permanent löschen?`;
-    steps.style.display='none';
-    confirm.style.display='flex';
-    exportBtn.style.display='none';
+    document.getElementById('m-text').innerHTML=`Möchtest du <strong>${list.length}</strong> Dateien permanent löschen?`;
+    steps.style.display='none';cb.style.display='flex';eb.style.display='none';
   }
   document.getElementById('modal').classList.remove('hidden');
 }
-
-async function execDelete() {
+async function execDelete(){
   document.getElementById('modal').classList.add('hidden');
-  const list=[...S.del];
-  let ok=0, fail=0;
-  for (const name of list) {
-    const rec=S.imgs.find(i=>i.name===name);
-    if (!rec?.handle) continue;
-    try { await rec.handle.remove(); ok++; S.del.delete(name); S.imgs=S.imgs.filter(i=>i.name!==name); }
-    catch(e) { console.error(e); fail++; }
+  const list=[...S.del];let ok=0,fail=0;
+  for(const name of list){
+    const rec=S.imgs.find(i=>i.name===name);if(!rec?.handle)continue;
+    try{await rec.handle.remove();ok++;S.del.delete(name);S.imgs=S.imgs.filter(i=>i.name!==name);}catch{fail++;}
   }
   S.groups=S.groups.map(g=>({...g,images:g.images.filter(i=>!list.includes(i.name))})).filter(g=>g.images.length>1);
-  toast(`${ok} gelöscht${fail?`, ${fail} Fehler`:''}`, ok>0?'ok':'err');
-  renderAll();
+  toast(`${ok} gelöscht${fail?`, ${fail} Fehler`:''}`,ok>0?'ok':'err');renderAll();
 }
-
-function exportList() {
-  const list = [...S.del];
-  // Plain filenames only, one per line – perfect for iOS Shortcuts to parse
-  const plain = list.join('\n');
-  // Also prepare a readable version
-  const readable = `FotoSort Löschliste\n${new Date().toLocaleString('de-DE')}\n${list.length} Bilder\n\n` + plain;
-
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(plain)
-      .then(() => {
-        toast('Dateinamen kopiert – jetzt Shortcut öffnen!', 'ok');
-        document.getElementById('modal').classList.add('hidden');
-        // Show shortcut launch hint
-        setTimeout(() => toast('👉 Öffne: „FotoSort Löschen" in der Kurzbefehl-App', ''), 2500);
-      })
-      .catch(() => dlList(readable));
-  } else {
-    dlList(readable);
-  }
+function exportList(){
+  const plain=[...S.del].join('\n');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(plain).then(()=>{toast('Kopiert – Kurzbefehl öffnen!','ok');document.getElementById('modal').classList.add('hidden');setTimeout(()=>toast('👉 „FotoSort Löschen" öffnen',''),2200);}).catch(()=>dlList(plain));
+  }else dlList(plain);
 }
-function dlList(txt) {
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
-  a.download='fotosort-loeschliste.txt'; a.click();
+function dlList(txt){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));a.download='fotosort-loeschliste.txt';a.click();
   document.getElementById('modal').classList.add('hidden');
 }
 
-// ═══════════════════════════════════════════
-//  SCAN UI HELPERS
-// ═══════════════════════════════════════════
-function setProgress(p) { document.getElementById('prog').style.width=p+'%'; }
-function setScanStatus(t) { document.getElementById('scan-status').textContent=t; }
-function setScanTitle(t) { document.getElementById('scan-title').textContent=t; }
-function litCell(i) {
-  const cells=document.querySelectorAll('.scell');
-  cells[i]?.classList.add('lit');
-  setTimeout(()=>cells[i]?.classList.remove('lit'), 350);
-}
-// iOS Safari needs at least one real frame (16ms) to release the UI thread
-// setTimeout(0) is not enough – it gets batched and never actually yields
-function tick() { return new Promise(r => setTimeout(r, 16)); }
-
-// ═══════════════════════════════════════════
-//  MISC
-// ═══════════════════════════════════════════
-function fmtSize(b) {
-  if(b<1024) return b+'B';
-  if(b<1048576) return (b/1024).toFixed(0)+'KB';
-  return (b/1048576).toFixed(1)+'MB';
-}
+// ── HELPERS ─────────────────────────────────────────
+function setProgress(p){document.getElementById('prog').style.width=p+'%';}
+function setScanStatus(t){document.getElementById('scan-status').textContent=t;}
+function setScanTitle(t){document.getElementById('scan-title').textContent=t;}
+function tick(){return new Promise(r=>setTimeout(r,16));}
+function litCell(i){const c=document.querySelectorAll('.scell');c[i]?.classList.add('lit');setTimeout(()=>c[i]?.classList.remove('lit'),350);}
+function fmtSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(0)+'KB';return(b/1048576).toFixed(1)+'MB';}
 let _tt;
-function toast(msg, type='') {
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className='toast '+type;
-  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.add('hidden'),3000);
-}
-function resetAll() {
-  S.handles=[]; S.files=[]; S.imgs=[]; S.groups=[]; S.del.clear();
-  show('s-land');
-}
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast'+(type?' '+type:'');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.add('hidden'),3000);}
+function resetState(){S.handles=[];S.imgs=[];S.groups=[];S.del.clear();}
+function resetAll(){resetState();show('s-land');}
 
-// Service Worker
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
