@@ -542,11 +542,8 @@ document.getElementById('btn-del').addEventListener('click', openModal);
 document.getElementById('m-cancel').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
 document.getElementById('m-confirm').addEventListener('click', execDelete);
 document.getElementById('m-export').addEventListener('click', exportList);
-document.getElementById('thresh-slider').addEventListener('input', e => {
-  S.thresh = +e.target.value;
-  document.getElementById('thresh-val').textContent = e.target.value;
-  recompute();
-});
+// thresh-slider removed (Claude API mode doesn't need it)
+
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   b.classList.add('on');
