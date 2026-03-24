@@ -117,28 +117,18 @@ h1 .acc{color:var(--acc)}
 .btn-danger:active{opacity:.8}
 .btn-sm{font-size:.78rem;padding:.38rem .8rem}
 
-/* iOS input wrapper */
-.file-input-wrap{
-  position:relative;width:100%;max-width:280px;
-  animation:fadeUp .5s .38s ease both;
-}
-.file-input-wrap input[type=file]{
-  position:absolute;inset:0;width:100%;height:100%;
-  opacity:0;cursor:pointer;z-index:3;
-  -webkit-tap-highlight-color:transparent;
-  font-size:16px; /* prevents iOS zoom */
-}
-.file-input-wrap .btn-visual{
+/* iOS file button – real button calls hidden input */
+.ios-file-btn{
   display:flex;align-items:center;justify-content:center;gap:.6rem;
   background:var(--acc);color:#0a0a0f;
-  border-radius:var(--r);padding:.85rem 1.8rem;
+  border:none;border-radius:var(--r);padding:.85rem 1.8rem;
   font-family:var(--font);font-size:1rem;font-weight:700;
-  pointer-events:none;width:100%;
-  transition:transform .15s, opacity .15s;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  width:100%;max-width:280px;
+  transition:transform .15s,opacity .15s;
+  animation:fadeUp .5s .38s ease both;
 }
-.file-input-wrap:active .btn-visual{
-  transform:scale(.97); opacity:.85;
-}
+.ios-file-btn:active{ transform:scale(.97); opacity:.85; }
 
 .ios-tip{
   width:100%;max-width:340px;
@@ -499,18 +489,17 @@ function show(id) {
   const note  = document.getElementById('fs-note');
 
   if (FALLBACK) {
-    // iOS / Safari
+    // iOS / Safari – real button calls hidden input.click()
+    // This is the most reliable approach on iOS Safari
     area.innerHTML = `
       <div class="mode-badge mode-ios" style="margin-bottom:.25rem">📱 iOS/Safari Modus</div>
-      <div class="file-input-wrap">
-        <input type="file" id="file-in" accept="image/*" multiple/>
-        <div class="btn-visual">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
-          </svg>
-          Bilder auswählen
-        </div>
-      </div>
+      <input type="file" id="file-in" accept="image/*" multiple style="display:none;font-size:16px"/>
+      <button class="ios-file-btn" id="btn-pick">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        Bilder auswählen
+      </button>
       <div class="ios-tip">
         <div class="ios-tip-title">💡 Viele Bilder auswählen</div>
         <ol>
@@ -521,10 +510,12 @@ function show(id) {
         <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ (Löschliste wird exportiert)</div>
       </div>`;
     note.textContent = '';
-    // iOS Safari: attach both 'change' and 'input' events as fallback
     const fileIn = document.getElementById('file-in');
+    const btnPick = document.getElementById('btn-pick');
+    // Button click opens native file picker
+    btnPick.addEventListener('click', () => fileIn.click());
+    // Handle selection
     fileIn.addEventListener('change', onFileInput);
-    fileIn.addEventListener('input',  onFileInput); // iOS sometimes fires 'input' instead
   } else {
     // Desktop Chrome/Edge
     area.innerHTML = `
@@ -817,16 +808,20 @@ function histDist(a,b) {
 
 async function groupHash(imgs) {
   const groups=[], used=new Set();
-  for (let i=0;i<imgs.length;i++) {
+  const n = imgs.length;
+  for (let i=0;i<n;i++) {
     if (used.has(i)) continue;
     const g=[imgs[i]];
-    for (let j=i+1;j<imgs.length;j++) {
+    for (let j=i+1;j<n;j++) {
       if (!used.has(j) && hamming(imgs[i].hash,imgs[j].hash)<=8) {
         g.push(imgs[j]); used.add(j);
       }
     }
     if (g.length>1) { used.add(i); groups.push({type:'hash',images:g}); }
-    if (i % 20 === 0) await tick(); // yield every 20 rows
+    if (i % 5 === 0) {
+      setProgress(62 + (i/n)*6);
+      await tick();
+    }
   }
   return groups;
 }
@@ -835,14 +830,14 @@ async function groupVisual(imgs, thresh) {
   const hashThresh = 8 + thresh * 1.5;
   const histThresh = 0.12 + thresh * 0.015;
   const groups=[], used=new Set();
-  const total = imgs.length;
-  for (let i=0;i<total;i++) {
+  const n = imgs.length;
+  for (let i=0;i<n;i++) {
     if (used.has(i)) continue;
     const g=[imgs[i]], sc=[{img:imgs[i],score:0}];
-    for (let j=i+1;j<total;j++) {
+    for (let j=i+1;j<n;j++) {
       if (used.has(j)) continue;
       const hd = hamming(imgs[i].hash, imgs[j].hash);
-      if (hd <= 8 || hd > hashThresh) continue; // fast pre-filter
+      if (hd <= 8 || hd > hashThresh) continue;
       const cd = histDist(imgs[i].col, imgs[j].col);
       if (cd <= histThresh) {
         g.push(imgs[j]);
@@ -851,7 +846,10 @@ async function groupVisual(imgs, thresh) {
       }
     }
     if (g.length>1) { used.add(i); groups.push({type:'visual',images:g,scores:sc}); }
-    if (i % 20 === 0) await tick(); // yield every 20 rows
+    if (i % 5 === 0) {
+      setProgress(68 + (i/n)*18);
+      await tick();
+    }
   }
   return groups;
 }
