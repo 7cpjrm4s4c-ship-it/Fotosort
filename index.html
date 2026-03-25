@@ -223,7 +223,7 @@ h1 .acc{color:var(--acc)}
       </div>
       <span id="api-status">Claude analysiert deine Bilder</span>
     </div>
-    <div id="open-area" style="display:contents"></div>
+    <div id="open-area"></div>
     <p class="fs-note" id="fs-note"></p>
   </div>
 </div>
@@ -305,7 +305,7 @@ function show(id) {
 }
 
 // ── INIT ────────────────────────────────────────────
-(function(){
+document.addEventListener('DOMContentLoaded', function init() {
   if (S.apiKey) { document.getElementById('api-key').value = S.apiKey; setApiStatus('✓ Gespeichert', true); }
   const area = document.getElementById('open-area');
   if (FALLBACK) {
@@ -343,7 +343,7 @@ function show(id) {
   }
   const box = document.getElementById('scan-cells');
   for (let i = 0; i < 25; i++) { const c = document.createElement('div'); c.className='scell'; box.appendChild(c); }
-})();
+});
 
 // ── WIRING ──────────────────────────────────────────
 document.getElementById('btn-save-key').addEventListener('click', saveApiKey);
