@@ -223,7 +223,27 @@ h1 .acc{color:var(--acc)}
       </div>
       <span id="api-status">Claude analysiert deine Bilder</span>
     </div>
-    <div id="open-area"></div>
+    <div id="open-area">
+      <!-- Filled statically – no JS injection needed -->
+      <div class="mode-badge mode-ios">📱 iOS/Safari Modus</div>
+      <input type="file" id="file-in" accept="image/*" multiple
+        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;top:0;left:0"/>
+      <label for="file-in" class="ios-file-btn">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        Bilder auswählen
+      </label>
+      <div class="ios-tip">
+        <div class="ios-tip-title">💡 Viele Bilder auswählen</div>
+        <ol>
+          <li>„Bilder auswählen" tippen</li>
+          <li>Erstes Foto antippen &amp; <strong>wischen</strong> → Mehrfachauswahl</li>
+          <li>Oder lang gedrückt halten, dann weitere antippen</li>
+        </ol>
+        <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ → Löschliste für Kurzbefehl-App</div>
+      </div>
+    </div>
     <p class="fs-note" id="fs-note"></p>
   </div>
 </div>
@@ -305,51 +325,20 @@ function show(id) {
 }
 
 // ── INIT ────────────────────────────────────────────
-// Script is at end of body → DOM already ready, no DOMContentLoaded needed
 (function init() {
+  // Restore API key display
   if (S.apiKey) {
     const el = document.getElementById('api-key');
-    if (el) { el.value = S.apiKey; }
+    if (el) el.value = S.apiKey;
     const st = document.getElementById('api-status');
     if (st) { st.textContent = '✓ Gespeichert'; st.className = 'ok'; }
   }
-  const area = document.getElementById('open-area');
-  if (!area) { console.error('open-area not found'); return; }
-  if (FALLBACK) {
-    area.innerHTML = `
-      <div class="mode-badge mode-ios">📱 iOS/Safari Modus</div>
-      <input type="file" id="file-in" accept="image/*" multiple
-        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;top:0;left:0"/>
-      <label for="file-in" class="ios-file-btn">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
-        </svg>
-        Bilder auswählen
-      </label>
-      <div class="ios-tip">
-        <div class="ios-tip-title">💡 Viele Bilder auswählen</div>
-        <ol>
-          <li>„Bilder auswählen" tippen</li>
-          <li>Erstes Foto antippen &amp; <strong>wischen</strong> → Mehrfachauswahl</li>
-          <li>Oder lang gedrückt halten, dann weitere antippen</li>
-        </ol>
-        <div class="ios-tip-note">Analyse ✓ · Direktes Löschen ✗ → Löschliste für Kurzbefehl-App</div>
-      </div>`;
-    document.getElementById('file-in').addEventListener('change', onFileInput);
-  } else {
-    area.innerHTML = `
-      <div class="mode-badge mode-desktop">🖥 Desktop – echtes Löschen ✓</div>
-      <button class="btn-primary" id="btn-folder">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        Ordner öffnen
-      </button>`;
-    document.getElementById('fs-note').textContent = 'Benötigt Chrome / Edge';
-    document.getElementById('btn-folder').addEventListener('click', onOpenFolder);
-  }
+  // Wire file input (already in HTML)
+  const fileIn = document.getElementById('file-in');
+  if (fileIn) fileIn.addEventListener('change', onFileInput);
+  // Scan cells
   const box = document.getElementById('scan-cells');
-  for (let i = 0; i < 25; i++) { const c = document.createElement('div'); c.className='scell'; box.appendChild(c); }
+  if (box) for (let i = 0; i < 25; i++) { const c = document.createElement('div'); c.className='scell'; box.appendChild(c); }
 })();
 
 // ── WIRING ──────────────────────────────────────────
