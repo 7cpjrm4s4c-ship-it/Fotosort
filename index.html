@@ -325,7 +325,8 @@ function show(id) {
 }
 
 // ── INIT ────────────────────────────────────────────
-(function init() {
+// ── INIT – defined here, called at END of script after all functions ──
+function init() {
   // Restore API key display
   if (S.apiKey) {
     const el = document.getElementById('api-key');
@@ -339,29 +340,25 @@ function show(id) {
   // Scan cells
   const box = document.getElementById('scan-cells');
   if (box) for (let i = 0; i < 25; i++) { const c = document.createElement('div'); c.className='scell'; box.appendChild(c); }
-})();
-
-// ── WIRING ──────────────────────────────────────────
-document.getElementById('btn-save-key').addEventListener('click', saveApiKey);
-document.getElementById('btn-cancel').addEventListener('click', ()=>{ S.abort=true; show('s-land'); });
-document.getElementById('btn-rescan').addEventListener('click', resetAll);
-document.getElementById('btn-del').addEventListener('click', openModal);
-document.getElementById('m-cancel').addEventListener('click', ()=>document.getElementById('modal').classList.add('hidden'));
-document.getElementById('m-confirm').addEventListener('click', execDelete);
-document.getElementById('m-export').addEventListener('click', exportList);
-document.getElementById('btn-all-best').addEventListener('click', ()=>globalAct('best'));
-document.getElementById('btn-all-rest').addEventListener('click', ()=>globalAct('rest'));
-document.getElementById('btn-all-reset').addEventListener('click', ()=>globalAct('reset'));
-document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', ()=>{
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  b.classList.add('on'); S.filter=b.dataset.f;
-  renderGroups();
-  // iOS Safari repaint fix – force layout recalculation
-  const g = document.getElementById('groups');
-  g.style.display = 'none';
-  g.offsetHeight; // trigger reflow
-  g.style.display = '';
-}));
+  // ── WIRING – inside init so all functions are defined first ──
+  document.getElementById('btn-save-key').addEventListener('click', saveApiKey);
+  document.getElementById('btn-cancel').addEventListener('click', ()=>{ S.abort=true; show('s-land'); });
+  document.getElementById('btn-rescan').addEventListener('click', resetAll);
+  document.getElementById('btn-del').addEventListener('click', openModal);
+  document.getElementById('m-cancel').addEventListener('click', ()=>document.getElementById('modal').classList.add('hidden'));
+  document.getElementById('m-confirm').addEventListener('click', execDelete);
+  document.getElementById('m-export').addEventListener('click', exportList);
+  document.getElementById('btn-all-best').addEventListener('click', ()=>globalAct('best'));
+  document.getElementById('btn-all-rest').addEventListener('click', ()=>globalAct('rest'));
+  document.getElementById('btn-all-reset').addEventListener('click', ()=>globalAct('reset'));
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+    b.classList.add('on'); S.filter=b.dataset.f;
+    renderGroups();
+    const g = document.getElementById('groups');
+    g.style.display='none'; g.offsetHeight; g.style.display='';
+  }));
+} // end init
 
 // ── API KEY ──────────────────────────────────────────
 function saveApiKey() {
@@ -645,6 +642,10 @@ function resetState(){S.handles=[];S.imgs=[];S.groups=[];S.del.clear();}
 function resetAll(){resetState();show('s-land');}
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// Call init last – all functions are defined by now
+init();
+
 </script>
 </body>
 </html>
