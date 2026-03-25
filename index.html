@@ -599,10 +599,19 @@ async function execDelete(){
   toast(`${ok} gelöscht${fail?`, ${fail} Fehler`:''}`,ok>0?'ok':'err');renderAll();
 }
 function exportList(){
-  const plain=[...S.del].join('\n');
+  // Strip file extensions – iOS Photos searches by name without extension
+  // IMG_0838.jpeg → IMG_0838, so Shortcut finds it regardless of internal format
+  const names = [...S.del].map(n => n.replace(/\.[^.]+$/, ''));
+  const plain = names.join('\n');
   if(navigator.clipboard){
-    navigator.clipboard.writeText(plain).then(()=>{toast('Kopiert – Kurzbefehl öffnen!','ok');document.getElementById('modal').classList.add('hidden');setTimeout(()=>toast('👉 „FotoSort Löschen" öffnen',''),2200);}).catch(()=>dlList(plain));
-  }else dlList(plain);
+    navigator.clipboard.writeText(plain)
+      .then(()=>{
+        toast('Kopiert – Kurzbefehl öffnen!','ok');
+        document.getElementById('modal').classList.add('hidden');
+        setTimeout(()=>toast('👉 „FotoSort Löschen" öffnen',''),2200);
+      })
+      .catch(()=>dlList(plain));
+  } else dlList(plain);
 }
 function dlList(txt){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));a.download='fotosort-loeschliste.txt';a.click();
