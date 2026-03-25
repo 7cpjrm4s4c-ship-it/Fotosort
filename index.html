@@ -305,9 +305,16 @@ function show(id) {
 }
 
 // ── INIT ────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function init() {
-  if (S.apiKey) { document.getElementById('api-key').value = S.apiKey; setApiStatus('✓ Gespeichert', true); }
+// Script is at end of body → DOM already ready, no DOMContentLoaded needed
+(function init() {
+  if (S.apiKey) {
+    const el = document.getElementById('api-key');
+    if (el) { el.value = S.apiKey; }
+    const st = document.getElementById('api-status');
+    if (st) { st.textContent = '✓ Gespeichert'; st.className = 'ok'; }
+  }
   const area = document.getElementById('open-area');
+  if (!area) { console.error('open-area not found'); return; }
   if (FALLBACK) {
     area.innerHTML = `
       <div class="mode-badge mode-ios">📱 iOS/Safari Modus</div>
@@ -343,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function init() {
   }
   const box = document.getElementById('scan-cells');
   for (let i = 0; i < 25; i++) { const c = document.createElement('div'); c.className='scell'; box.appendChild(c); }
-});
+})();
 
 // ── WIRING ──────────────────────────────────────────
 document.getElementById('btn-save-key').addEventListener('click', saveApiKey);
