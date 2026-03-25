@@ -444,18 +444,36 @@ async function runPipeline(total,getItem) {
   }
   if (!S.apiKey) { show('s-land'); setTimeout(()=>{document.getElementById('api-key').focus();toast('API Key erforderlich','err');},200); return; }
 
-  const imgs=S.imgs,n=imgs.length,ABATCH=12,allGroups=[],used=new Set();
-  for (let i=0;i<n;i+=ABATCH) {
+  // ── Parallel Claude analysis ──────────────────────
+  // 20 images per batch (fewer calls) + 3 parallel (3x faster)
+  const imgs=S.imgs, n=imgs.length;
+  const ABATCH=20, PARALLEL=3;
+  const allGroups=[], used=new Set();
+
+  const batches=[];
+  for (let i=0;i<n;i+=ABATCH) batches.push(imgs.slice(i,i+ABATCH));
+  let done=0;
+
+  for (let i=0;i<batches.length;i+=PARALLEL) {
     if (S.abort) return;
-    const batch=imgs.slice(i,i+ABATCH);
-    setScanTitle(`Claude analysiert… (${i+1}–${Math.min(i+ABATCH,n)} / ${n})`);
-    setProgress(55+(i/n)*40); await tick();
-    const groups=await claudeAnalyse(batch);
-    for (const g of groups) {
-      const fresh=g.images.filter(img=>!used.has(img.name));
-      if (fresh.length>=2){fresh.forEach(img=>used.add(img.name));allGroups.push({...g,images:fresh});}
-    }
+    const chunk=batches.slice(i,i+PARALLEL);
+    setScanTitle(`Claude analysiert… (${done+1}–${Math.min(done+chunk.length*ABATCH,n)} / ${n})`);
+    setProgress(56+(done/n)*40); await tick();
+
+    const results=await Promise.allSettled(chunk.map(b=>claudeAnalyse(b)));
+    results.forEach(r=>{
+      if (r.status!=='fulfilled') return;
+      for (const g of r.value) {
+        const fresh=g.images.filter(img=>!used.has(img.name));
+        if (fresh.length>=2){fresh.forEach(img=>used.add(img.name));allGroups.push({...g,images:fresh});}
+      }
+    });
+    done+=chunk.reduce((s,b)=>s+b.length,0);
+
+    // 500ms gap between parallel chunks to stay within rate limits
+    if (i+PARALLEL<batches.length) await new Promise(r=>setTimeout(r,500));
   }
+
   setProgress(100);
   S.groups=allGroups.sort((a,b)=>b.images.length-a.images.length);
   await tick(); renderAll(); show('s-results');
