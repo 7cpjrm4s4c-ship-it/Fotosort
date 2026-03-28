@@ -180,6 +180,37 @@ h1 .acc{color:var(--acc)}
 .toast.err{border-color:var(--red);color:var(--red)}
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LOADING SCREEN ── */
+#loading{align-items:center;justify-content:center;background:var(--bg)}
+.loading-wrap{display:flex;flex-direction:column;align-items:center;gap:2rem;padding:2.5rem 2rem;max-width:360px;width:100%;text-align:center}
+.load-icon{width:72px;height:72px;position:relative}
+.load-ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--surf2)}
+.load-arc{position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:var(--acc);animation:spin 1s linear infinite}
+.load-arc2{position:absolute;inset:6px;border-radius:50%;border:2px solid transparent;border-top-color:rgba(232,255,71,.3);animation:spin .7s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.loading-wrap h2{font-size:1.25rem;font-weight:700}
+.load-sub{font-family:var(--mono);font-size:.75rem;color:var(--mut)}
+.load-bar-wrap{width:100%;height:6px;background:var(--surf2);border-radius:100px;overflow:hidden}
+.load-bar-fill{height:100%;background:var(--acc);border-radius:100px;width:0%;transition:width .25s;box-shadow:0 0 10px var(--acc)}
+#load-count{font-family:var(--mono);font-size:2.5rem;font-weight:800;color:var(--acc);line-height:1}
+#load-label{font-family:var(--mono);font-size:.72rem;color:var(--mut);margin-top:.25rem}
+.load-hint{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;font-size:.78rem;color:var(--mut);line-height:1.6;width:100%}
+.load-hint strong{color:var(--txt);display:block;margin-bottom:.3rem;font-size:.82rem}
+.tip-desktop{display:none}
+
+/* ── DESKTOP LAYOUT (>=768px) ── */
+@media(min-width:768px){
+  .land-body{max-width:580px}
+  h1{font-size:4rem}
+  .mlist{display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:.65rem;padding:.9rem}
+  .iitem{width:calc(25% - 3px);height:160px}
+  .groups{padding:1.25rem}
+  #load-count{font-size:3.5rem}
+  .tip-desktop{display:block}
+  .tip-ios{display:none}
+}
 </style>
 </head>
 <body>
@@ -221,14 +252,23 @@ h1 .acc{color:var(--acc)}
       </svg>
       Bilder auswählen
     </label>
-    <div class="tip">
-      <h3>💡 So funktioniert's</h3>
+    <div class="tip tip-ios">
+      <h3>📱 iOS – So funktioniert's</h3>
       <ol>
-        <li>„Bilder auswählen" tippen → <strong>alle</strong> Fotos wischen</li>
-        <li>Monate auswählen die analysiert werden sollen</li>
-        <li>„Analysieren" → Claude findet Duplikate</li>
+        <li>„Bilder auswählen" → erstes Foto tippen &amp; <strong>wischen</strong></li>
+        <li>Monate wählen → „Analysieren"</li>
+        <li>Display aktiv lassen beim Laden!</li>
       </ol>
       <div class="tip-note">Analyse ✓ · Direktes Löschen ✗ → Löschliste für Kurzbefehl-App</div>
+    </div>
+    <div class="tip tip-desktop">
+      <h3>💻 Desktop – So funktioniert's</h3>
+      <ol>
+        <li>„Bilder auswählen" → Foto-Ordner öffnen</li>
+        <li><strong>Cmd+A / Strg+A</strong> → alle Fotos markieren</li>
+        <li>Monate wählen → „Analysieren"</li>
+      </ol>
+      <div class="tip-note">Chrome / Firefox empfohlen · Kein iOS-Suspend-Problem</div>
     </div>
   </div>
 </div>
@@ -245,6 +285,41 @@ h1 .acc{color:var(--acc)}
     <span id="scan-st" class="lbl">0 / 0</span>
     <div id="scan-info"></div>
     <button class="btn-g" id="btn-cancel" style="margin-top:1rem">Abbrechen</button>
+  </div>
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="loading" class="screen">
+  <div class="loading-wrap">
+    <div class="load-icon">
+      <div class="load-ring"></div>
+      <div class="load-arc"></div>
+      <div class="load-arc2"></div>
+      <div class="load-inner">
+        <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
+          <rect x="4" y="4" width="18" height="18" rx="3" fill="#e8ff47"/>
+          <rect x="26" y="4" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
+          <rect x="4" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".5"/>
+          <rect x="26" y="26" width="18" height="18" rx="3" fill="#e8ff47" opacity=".3"/>
+        </svg>
+      </div>
+    </div>
+    <div>
+      <div id="load-count">0</div>
+      <div id="load-label">Fotos werden eingelesen…</div>
+    </div>
+    <div class="load-bar-wrap">
+      <div class="load-bar-fill" id="load-bar"></div>
+    </div>
+    <div class="load-hint tip-ios">
+      <strong>📱 iOS Hinweis</strong>
+      iOS überträgt alle Fotos zuerst intern – das dauert bei 2000+ Bildern 30–60 Sekunden.
+      Lass das Display aktiv, bis der Monats-Screen erscheint.
+    </div>
+    <div class="load-hint tip-desktop">
+      <strong>💻 Desktop-Tipp</strong>
+      Wähle deinen Foto-Ordner aus und drücke <strong>Cmd+A</strong> (Mac) bzw. <strong>Strg+A</strong> (Windows) um alle Fotos auf einmal zu markieren.
+    </div>
   </div>
 </div>
 
@@ -465,49 +540,38 @@ function onFileChange(evt) {
   imgs = []; groups = []; toDelete = new Set();
   selectedMonths = new Set(); monthMap = {};
 
-  // Show loading overlay immediately so user isn't staring at a frozen screen
-  showLoadingOverlay(0, files.length);
+  // Switch to dedicated loading screen immediately
+  showLoadingScreen(files.length);
 
-  // Kick off chunked processing after one rAF so the overlay renders first
+  // Start chunked processing after one rAF so the screen renders first
   requestAnimationFrame(function() {
     buildMonthMapChunked(files, 0);
   });
 }
 
-// Show/update the inline loading state on the landing screen
-function showLoadingOverlay(done, total) {
-  var label = eid('file-label');
-  var pct = total > 0 ? Math.round(done / total * 100) : 0;
-  if (done === 0) {
-    // First call: switch label to progress indicator
-    label.innerHTML =
-      '<span id="load-prog" style="font-family:var(--mono);font-size:.82rem">' +
-      'Lese Fotos… 0 %</span>';
-    label.style.background = 'var(--surf2)';
-    label.style.color = 'var(--acc)';
-    label.style.pointerEvents = 'none';
-  } else if (done < total) {
-    var progEl = eid('load-prog');
-    if (progEl) progEl.textContent = 'Lese Fotos… ' + pct + ' %';
-  }
+// ── DEDICATED LOADING SCREEN ─────────────────────
+function showLoadingScreen(total) {
+  eid('load-count').textContent = '0';
+  eid('load-label').textContent = total > 0
+    ? 'von ' + total + ' Fotos eingelesen…'
+    : 'Fotos werden eingelesen…';
+  eid('load-bar').style.width = '0%';
+  showScreen('loading');
 }
 
-function restoreFileLabel() {
-  var label = eid('file-label');
-  label.style.background = '';
-  label.style.color = '';
-  label.style.pointerEvents = '';
-  label.innerHTML =
-    '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
-    '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>' +
-    'Bilder auswählen';
+function updateLoadingScreen(done, total) {
+  eid('load-count').textContent = done;
+  var pct = total > 0 ? Math.round(done / total * 100) : 0;
+  eid('load-bar').style.width = pct + '%';
+  if (done >= total) {
+    eid('load-label').textContent = 'Fertig – Monate werden sortiert…';
+  }
 }
 
 function buildMonthMapChunked(files, offset) {
   var total = files.length;
   var end = Math.min(offset + PARSE_CHUNK, total);
 
-  // Process one chunk synchronously
   for (var i = offset; i < end; i++) {
     var f = files[i];
     var d = new Date(f.lastModified || Date.now());
@@ -522,15 +586,11 @@ function buildMonthMapChunked(files, offset) {
     monthMap[key].files.push(f);
   }
 
-  showLoadingOverlay(end, total);
+  updateLoadingScreen(end, total);
 
   if (end < total) {
-    // More chunks remaining – yield to browser then continue
-    requestAnimationFrame(function() {
-      buildMonthMapChunked(files, end);
-    });
+    requestAnimationFrame(function() { buildMonthMapChunked(files, end); });
   } else {
-    // All done – build preview URLs and render picker
     finishMonthMap();
   }
 }
@@ -538,7 +598,7 @@ function buildMonthMapChunked(files, offset) {
 function finishMonthMap() {
   var sortedKeys = Object.keys(monthMap).sort(function(a, b) { return b.localeCompare(a); });
 
-  // Only 1 preview URL per month (was 3) – faster, still gives visual context
+  // 1 preview Object URL per month – fast, no canvas needed
   sortedKeys.forEach(function(key) {
     var m = monthMap[key];
     if (m.files.length > 0) {
@@ -548,7 +608,6 @@ function finishMonthMap() {
     }
   });
 
-  restoreFileLabel();
   renderMonthPicker(sortedKeys);
   showScreen('mpick');
 }
