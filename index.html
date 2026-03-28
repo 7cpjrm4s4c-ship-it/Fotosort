@@ -513,16 +513,8 @@ var PARSE_CHUNK = 200; // files per chunk before yielding to browser
 
 function onFileChange(evt) {
   if (running) return;
-  if (!apiKey) {
-    toast('Bitte zuerst API Key eingeben und speichern', 'err');
-    eid('api-key').focus();
-    evt.target.value = '';
-    return;
-  }
 
   var all = evt.target.files || [];
-  // Snapshot FileList into a plain Array immediately – iOS Safari
-  // can invalidate FileList references after the event handler returns
   var files = [];
   for (var fi = 0; fi < all.length; fi++) {
     var f = all[fi];
@@ -531,19 +523,21 @@ function onFileChange(evt) {
       files.push(f);
     }
   }
-  evt.target.value = ''; // reset before any async work
+  evt.target.value = '';
 
-  if (!files.length) { toast('Keine Bilder ausgewählt', 'err'); return; }
+  if (!files.length) {
+    // User cancelled picker or selected nothing – go back to landing
+    showScreen('land');
+    return;
+  }
+
+  // Update counter now that we know the file count
+  showLoadingScreen(files.length);
 
   allFiles = files;
   revokeAllURLs();
   imgs = []; groups = []; toDelete = new Set();
   selectedMonths = new Set(); monthMap = {};
-
-  // Switch to loading screen FIRST, then yield TWICE to the browser
-  // so iOS actually paints before we start heavy work.
-  // Single rAF is not enough on iOS: rAF -> paint -> rAF -> code.
-  showLoadingScreen(files.length);
 
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
@@ -556,13 +550,17 @@ function onFileChange(evt) {
 
 // ── DEDICATED LOADING SCREEN ─────────────────────
 function showLoadingScreen(total) {
-  // Show count only if we already know it (desktop); on iOS total
-  // arrives correctly because we snapshot FileList before showing screen.
-  eid('load-count').textContent = total > 0 ? String(total) : '…';
-  eid('load-label').textContent = total > 0
-    ? 'Fotos werden sortiert…'
-    : 'Fotos werden übergeben…';
-  eid('load-bar').style.width = total > 0 ? '5%' : '0%'; // show life immediately
+  if (total === 0) {
+    // "Waiting" state – picker is open, nothing selected yet
+    eid('load-count').textContent = '…';
+    eid('load-label').textContent = 'Fotos auswählen und bestätigen…';
+    eid('load-bar').style.width = '0%';
+  } else {
+    // Processing state – we have the file count
+    eid('load-count').textContent = String(total);
+    eid('load-label').textContent = 'Fotos werden sortiert…';
+    eid('load-bar').style.width = '3%';
+  }
   showScreen('loading');
 }
 
@@ -1320,13 +1318,18 @@ function init() {
   // File input
   eid('file-in').addEventListener('change', onFileChange);
 
-  // FIX: guard file-label click – show warning if no API key
+  // Show loading screen AT THE MOMENT the label is tapped –
+  // BEFORE iOS opens its picker. When the user confirms in the
+  // picker, iOS blocks the thread; our screen is already painted.
   eid('file-label').addEventListener('click', function(e) {
     if (!apiKey) {
       e.preventDefault();
       toast('Bitte zuerst API Key eingeben und speichern', 'err');
       eid('api-key').focus();
+      return;
     }
+    // Pre-show loading screen in "waiting for picker" state
+    showLoadingScreen(0);
   });
 
   // Button wiring
