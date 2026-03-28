@@ -130,6 +130,34 @@ h1 .acc{color:var(--acc)}
 .cacts{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.6rem 1rem;border-top:1px solid var(--border)}
 .empty{display:flex;flex-direction:column;align-items:center;padding:4rem 2rem;gap:1rem;color:var(--mut);text-align:center}
 
+/* ── MONTH PICKER SCREEN ── */
+#mpick{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.mpick-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:rgba(10,10,15,.98);flex-shrink:0}
+.mpick-title{font-size:1.05rem;font-weight:800}
+.mpick-title .acc{color:var(--acc)}
+.mpick-sub{font-family:var(--mono);font-size:.68rem;color:var(--mut);padding:.5rem 1.25rem .6rem;border-bottom:1px solid var(--border);background:var(--surf);flex-shrink:0}
+.mpick-sub strong{color:var(--acc)}
+.mlist{flex:1 1 0;min-height:0;height:0;overflow-y:scroll;-webkit-overflow-scrolling:touch;padding:.75rem .75rem max(1rem,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:.5rem}
+.mcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;align-items:stretch;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .15s}
+.mcard:active{border-color:rgba(232,255,71,.25)}
+.mcard.sel{border-color:rgba(232,255,71,.5);background:var(--accdim)}
+.mcard-check{width:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem}
+.mcard-body{flex:1;padding:.75rem .5rem .75rem 0;min-width:0}
+.mcard-month{font-size:.95rem;font-weight:700;margin-bottom:.2rem}
+.mcard-meta{font-family:var(--mono);font-size:.65rem;color:var(--mut)}
+.mcard-bar{width:6px;flex-shrink:0;background:var(--surf2)}
+.mcard.sel .mcard-bar{background:var(--acc)}
+.mthumb{display:flex;gap:2px;padding:6px 6px 6px 0;align-items:center;flex-shrink:0}
+.mthumb img{width:38px;height:38px;object-fit:cover;border-radius:5px}
+.mpick-foot{display:flex;align-items:center;gap:.75rem;padding:.9rem 1.25rem;padding-bottom:max(.9rem,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(10,10,15,.98);flex-shrink:0;flex-wrap:wrap}
+.mpick-sel-info{font-family:var(--mono);font-size:.72rem;color:var(--mut);flex:1}
+.mpick-sel-info strong{color:var(--acc)}
+.btn-acc{display:flex;align-items:center;justify-content:center;gap:.5rem;background:var(--acc);color:#0a0a0f;border:none;border-radius:var(--r);padding:.75rem 1.5rem;font-family:var(--font);font-size:.95rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.btn-acc:disabled{opacity:.35;pointer-events:none}
+.btn-acc:active{opacity:.82}
+.msel-all{background:transparent;border:1px solid var(--border);border-radius:var(--rs);padding:.45rem .9rem;color:var(--mut);font-family:var(--mono);font-size:.68rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.msel-all:active{border-color:rgba(255,255,255,.2);color:var(--txt)}
+
 /* ── MODAL ── */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:100;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .modal.hide{display:none}
@@ -194,11 +222,11 @@ h1 .acc{color:var(--acc)}
       Bilder auswählen
     </label>
     <div class="tip">
-      <h3>💡 Viele Bilder auswählen</h3>
+      <h3>💡 So funktioniert's</h3>
       <ol>
-        <li>„Bilder auswählen" tippen</li>
-        <li>Erstes Foto antippen &amp; <strong>wischen</strong> → Mehrfachauswahl</li>
-        <li>Oder lang gedrückt halten, dann weitere antippen</li>
+        <li>„Bilder auswählen" tippen → <strong>alle</strong> Fotos wischen</li>
+        <li>Monate auswählen die analysiert werden sollen</li>
+        <li>„Analysieren" → Claude findet Duplikate</li>
       </ol>
       <div class="tip-note">Analyse ✓ · Direktes Löschen ✗ → Löschliste für Kurzbefehl-App</div>
     </div>
@@ -217,6 +245,21 @@ h1 .acc{color:var(--acc)}
     <span id="scan-st" class="lbl">0 / 0</span>
     <div id="scan-info"></div>
     <button class="btn-g" id="btn-cancel" style="margin-top:1rem">Abbrechen</button>
+  </div>
+</div>
+
+<!-- MONTH PICKER -->
+<div id="mpick" class="screen">
+  <div class="mpick-hdr">
+    <span class="mpick-title">Foto<span class="acc">Sort</span></span>
+    <button class="btn-g btn-sm" id="mpick-back">↩ Zurück</button>
+  </div>
+  <div class="mpick-sub" id="mpick-sub">Wähle die Monate aus, die analysiert werden sollen</div>
+  <div class="mlist" id="mlist"></div>
+  <div class="mpick-foot">
+    <button class="msel-all" id="msel-all">Alle wählen</button>
+    <span class="mpick-sel-info" id="mpick-sel-info"><strong>0</strong> Monate · 0 Fotos</span>
+    <button class="btn-acc" id="btn-analyse" disabled>Analysieren →</button>
   </div>
 </div>
 
@@ -272,18 +315,21 @@ h1 .acc{color:var(--acc)}
 
 // ─────────────────────────────────────────────────
 //  STATE
-//  FIX: toDelete is now a Set → O(1) lookups, no indexOf bugs
 // ─────────────────────────────────────────────────
-var apiKey   = localStorage.getItem('fsk') || '';
-var imgs     = [];   // { file, thumb, name, size }
-var groups   = [];   // { type, aiDesc, images[] }
-var toDelete = new Set();   // FIX: was Array (O(n) ops)
-var filter   = 'all';
-var running  = false;
-var aborted  = false;
+var apiKey        = localStorage.getItem('fsk') || '';
+var allFiles      = [];   // alle geladenen File-Objekte (vor Monatsfilter)
+var imgs          = [];   // { file, thumb, name, size, month } – nach Monatsfilter
+var groups        = [];
+var toDelete      = new Set();
+var filter        = 'all';
+var running       = false;
+var aborted       = false;
+var selectedMonths = new Set(); // keys: 'YYYY-MM'
 
-// FIX: track all ObjectURLs for cleanup (memory leak prevention)
-var _objectURLs = [];
+// Monatsdaten: Map 'YYYY-MM' → { label, files[], thumbs[] }
+var monthMap      = {};
+
+var _objectURLs   = [];
 
 // ─────────────────────────────────────────────────
 //  HELPERS
@@ -383,16 +429,13 @@ function saveApiKey() {
 }
 
 // ─────────────────────────────────────────────────
-//  FILE INPUT
+//  FILE INPUT → build month map → show picker
 // ─────────────────────────────────────────────────
 function onFileChange(evt) {
   if (running) return;
-
-  // FIX: Guard – require API key before processing
   if (!apiKey) {
     toast('Bitte zuerst API Key eingeben und speichern', 'err');
     eid('api-key').focus();
-    // Reset input so same selection can be re-triggered
     evt.target.value = '';
     return;
   }
@@ -405,31 +448,174 @@ function onFileChange(evt) {
       files.push(f);
     }
   }
-
-  // Reset input value so the same file(s) can be re-selected
-  // FIX: do this BEFORE async work to avoid iOS Safari quirks
   evt.target.value = '';
-
   if (!files.length) { toast('Keine Bilder ausgewählt', 'err'); return; }
 
-  running = true;
-  // FIX: cleanup previous run's object URLs before starting new run
+  allFiles = files;
   revokeAllURLs();
-  imgs = []; groups = []; toDelete = new Set();
+  imgs = []; groups = []; toDelete = new Set(); selectedMonths = new Set(); monthMap = {};
 
-  toast(files.length + ' Bilder geladen', 'ok');
-  setTimeout(function() {
-    showScreen('scan');
-    runPipeline(files)
-      .catch(function(e) {
-        console.error('[FotoSort] Pipeline error:', e);
-        toast('Fehler: ' + (e.message || String(e)).substring(0, 60), 'err');
-        showScreen('land');
-      })
-      .finally(function() {
-        running = false;
-      });
-  }, 120);
+  // Build month map from lastModified timestamp
+  var DE_MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  files.forEach(function(f) {
+    var d = new Date(f.lastModified || Date.now());
+    var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    if (!monthMap[key]) {
+      monthMap[key] = {
+        label: DE_MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        files: [],
+        thumbUrls: []   // up to 3 preview Object URLs
+      };
+    }
+    monthMap[key].files.push(f);
+  });
+
+  // Sort months descending (newest first)
+  var sortedKeys = Object.keys(monthMap).sort(function(a, b) { return b.localeCompare(a); });
+
+  // Build 3 preview thumbs per month (cheap – just object URLs, no canvas)
+  sortedKeys.forEach(function(key) {
+    var m = monthMap[key];
+    var previewFiles = m.files.slice(0, 3);
+    previewFiles.forEach(function(pf) {
+      var u = URL.createObjectURL(pf);
+      _objectURLs.push(u);
+      m.thumbUrls.push(u);
+    });
+  });
+
+  renderMonthPicker(sortedKeys);
+  showScreen('mpick');
+}
+
+// ─────────────────────────────────────────────────
+//  MONTH PICKER
+// ─────────────────────────────────────────────────
+function renderMonthPicker(sortedKeys) {
+  var list = eid('mlist');
+  list.innerHTML = '';
+  var totalPhotos = allFiles.length;
+  eid('mpick-sub').innerHTML =
+    '<strong>' + totalPhotos + '</strong> Fotos geladen · Monate auswählen und analysieren';
+
+  var frag = document.createDocumentFragment();
+  sortedKeys.forEach(function(key) {
+    var m = monthMap[key];
+    var card = document.createElement('div');
+    card.className = 'mcard';
+    card.dataset.key = key;
+
+    var bar = document.createElement('div');
+    bar.className = 'mcard-bar';
+
+    var check = document.createElement('div');
+    check.className = 'mcard-check';
+    check.textContent = '○';
+
+    var body = document.createElement('div');
+    body.className = 'mcard-body';
+    var monthEl = document.createElement('div');
+    monthEl.className = 'mcard-month';
+    monthEl.textContent = m.label;
+    var metaEl = document.createElement('div');
+    metaEl.className = 'mcard-meta';
+    metaEl.textContent = m.files.length + ' Foto' + (m.files.length !== 1 ? 's' : '');
+    body.appendChild(monthEl);
+    body.appendChild(metaEl);
+
+    // Preview thumbnails
+    var thumbs = document.createElement('div');
+    thumbs.className = 'mthumb';
+    m.thumbUrls.forEach(function(url) {
+      var img = document.createElement('img');
+      img.src = url;
+      img.loading = 'lazy';
+      thumbs.appendChild(img);
+    });
+
+    card.appendChild(bar);
+    card.appendChild(check);
+    card.appendChild(body);
+    card.appendChild(thumbs);
+
+    card.addEventListener('click', function() { toggleMonth(key); });
+    frag.appendChild(card);
+  });
+  list.appendChild(frag);
+  updateMonthFooter();
+}
+
+function toggleMonth(key) {
+  if (selectedMonths.has(key)) selectedMonths.delete(key);
+  else selectedMonths.add(key);
+  // Update card appearance
+  var card = document.querySelector('.mcard[data-key="' + CSS.escape(key) + '"]');
+  if (card) {
+    var isSel = selectedMonths.has(key);
+    card.classList.toggle('sel', isSel);
+    card.querySelector('.mcard-check').textContent = isSel ? '✓' : '○';
+  }
+  updateMonthFooter();
+}
+
+function selectAllMonths() {
+  var allSelected = Object.keys(monthMap).every(function(k) { return selectedMonths.has(k); });
+  if (allSelected) {
+    // Deselect all
+    selectedMonths.clear();
+    document.querySelectorAll('.mcard').forEach(function(c) {
+      c.classList.remove('sel');
+      c.querySelector('.mcard-check').textContent = '○';
+    });
+  } else {
+    // Select all
+    Object.keys(monthMap).forEach(function(k) { selectedMonths.add(k); });
+    document.querySelectorAll('.mcard').forEach(function(c) {
+      c.classList.add('sel');
+      c.querySelector('.mcard-check').textContent = '✓';
+    });
+  }
+  updateMonthFooter();
+}
+
+function updateMonthFooter() {
+  var nMonths = selectedMonths.size;
+  var nPhotos = 0;
+  selectedMonths.forEach(function(k) {
+    if (monthMap[k]) nPhotos += monthMap[k].files.length;
+  });
+  eid('mpick-sel-info').innerHTML =
+    '<strong>' + nMonths + '</strong> Monat' + (nMonths !== 1 ? 'e' : '') +
+    ' · <strong>' + nPhotos + '</strong> Fotos';
+  eid('btn-analyse').disabled = nMonths === 0;
+
+  var allSel = Object.keys(monthMap).length > 0 &&
+    Object.keys(monthMap).every(function(k) { return selectedMonths.has(k); });
+  eid('msel-all').textContent = allSel ? 'Alle abwählen' : 'Alle wählen';
+}
+
+function startAnalysis() {
+  // Collect files for selected months
+  var selectedFiles = [];
+  // Keep month order (newest first) for predictable batching
+  var sortedKeys = Array.from(selectedMonths).sort(function(a,b){return b.localeCompare(a);});
+  sortedKeys.forEach(function(k) {
+    if (monthMap[k]) monthMap[k].files.forEach(function(f) { selectedFiles.push(f); });
+  });
+  if (!selectedFiles.length) return;
+
+  running = true;
+  imgs = []; groups = []; toDelete = new Set();
+  showScreen('scan');
+  runPipeline(selectedFiles)
+    .catch(function(e) {
+      console.error('[FotoSort] Pipeline error:', e);
+      toast('Fehler: ' + (e.message || String(e)).substring(0, 60), 'err');
+      showScreen('mpick');
+    })
+    .finally(function() { running = false; });
 }
 
 // ─────────────────────────────────────────────────
@@ -966,12 +1152,11 @@ function dlList(txt) {
   eid('modal').classList.add('hide');
 }
 
-// FIX: cleanup all state + object URLs on reset
 function resetAll() {
   revokeAllURLs();
-  imgs = []; groups = []; toDelete = new Set();
+  allFiles = []; imgs = []; groups = []; toDelete = new Set();
+  selectedMonths = new Set(); monthMap = {};
   aborted = true;
-  // Reset file input so same folder can be re-picked
   var fi = eid('file-in');
   if (fi) fi.value = '';
   showScreen('land');
@@ -1021,8 +1206,16 @@ function init() {
   eid('btn-cancel').addEventListener('click', function() {
     aborted = true;
     revokeAllURLs();
+    showScreen('mpick');  // back to month picker, not land
+  });
+
+  // Month picker buttons
+  eid('mpick-back').addEventListener('click', function() {
+    aborted = false;
     showScreen('land');
   });
+  eid('msel-all').addEventListener('click', selectAllMonths);
+  eid('btn-analyse').addEventListener('click', startAnalysis);
 
   eid('btn-new').addEventListener('click', resetAll);
   eid('btn-del').addEventListener('click', openModal);
