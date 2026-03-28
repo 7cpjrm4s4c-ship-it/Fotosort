@@ -540,32 +540,39 @@ function onFileChange(evt) {
   imgs = []; groups = []; toDelete = new Set();
   selectedMonths = new Set(); monthMap = {};
 
-  // Switch to dedicated loading screen immediately
+  // Switch to loading screen FIRST, then yield TWICE to the browser
+  // so iOS actually paints before we start heavy work.
+  // Single rAF is not enough on iOS: rAF -> paint -> rAF -> code.
   showLoadingScreen(files.length);
 
-  // Start chunked processing after one rAF so the screen renders first
   requestAnimationFrame(function() {
-    buildMonthMapChunked(files, 0);
+    requestAnimationFrame(function() {
+      setTimeout(function() {         // extra 50ms safety for slow devices
+        buildMonthMapChunked(files, 0);
+      }, 50);
+    });
   });
 }
 
 // ── DEDICATED LOADING SCREEN ─────────────────────
 function showLoadingScreen(total) {
-  eid('load-count').textContent = '0';
+  // Show count only if we already know it (desktop); on iOS total
+  // arrives correctly because we snapshot FileList before showing screen.
+  eid('load-count').textContent = total > 0 ? String(total) : '…';
   eid('load-label').textContent = total > 0
-    ? 'von ' + total + ' Fotos eingelesen…'
-    : 'Fotos werden eingelesen…';
-  eid('load-bar').style.width = '0%';
+    ? 'Fotos werden sortiert…'
+    : 'Fotos werden übergeben…';
+  eid('load-bar').style.width = total > 0 ? '5%' : '0%'; // show life immediately
   showScreen('loading');
 }
 
 function updateLoadingScreen(done, total) {
   eid('load-count').textContent = done;
-  var pct = total > 0 ? Math.round(done / total * 100) : 0;
+  var pct = total > 0 ? Math.min(99, Math.round(done / total * 100)) : 0;
   eid('load-bar').style.width = pct + '%';
-  if (done >= total) {
-    eid('load-label').textContent = 'Fertig – Monate werden sortiert…';
-  }
+  eid('load-label').textContent = done >= total
+    ? 'Fertig – Vorschaubilder werden erstellt…'
+    : 'von ' + total + ' Fotos eingelesen';
 }
 
 function buildMonthMapChunked(files, offset) {
