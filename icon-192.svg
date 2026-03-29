@@ -1,8 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="32" fill="#0a0a0f"/>
-  <rect x="16" y="16" width="72" height="72" rx="12" fill="#e8ff47"/>
-  <rect x="104" y="16" width="72" height="72" rx="12" fill="#e8ff47" opacity="0.5"/>
-  <rect x="16" y="104" width="72" height="72" rx="12" fill="#e8ff47" opacity="0.5"/>
-  <rect x="104" y="104" width="72" height="72" rx="12" fill="#e8ff47" opacity="0.3"/>
-  <line x1="60" y1="60" x2="132" y2="132" stroke="#e8ff47" stroke-width="6" stroke-dasharray="12 8" stroke-linecap="round"/>
+  <rect width="192" height="192" rx="42" fill="#060e0c"/>
+  <radialGradient id="bg" cx="40%" cy="35%" r="65%">
+    <stop offset="0%" stop-color="#0d201a"/>
+    <stop offset="100%" stop-color="#030a07"/>
+  </radialGradient>
+  <rect width="192" height="192" rx="42" fill="url(#bg)"/>
+  <!-- Foto-Rahmen -->
+  <rect x="18" y="24" width="100" height="80" rx="14" fill="#0d201a" stroke="rgba(48,209,88,.35)" stroke-width="5"/>
+  <!-- Bergsilhouette im Foto -->
+  <path d="M22 96 L42 64 L64 82 L82 66 L118 96Z" fill="#30d158" opacity=".38"/>
+  <!-- Sonne im Foto -->
+  <circle cx="105" cy="38" r="10" fill="#30d158" opacity=".45"/>
+  <!-- Lupe Schatten/Tiefe -->
+  <circle cx="124" cy="116" r="44" fill="#040e0b"/>
+  <!-- Lupe Glas -->
+  <circle cx="118" cy="110" r="36" fill="none" stroke="#30d158" stroke-width="9"/>
+  <!-- Lupe Innenreflexion -->
+  <circle cx="118" cy="110" r="36" fill="rgba(48,209,88,.05)"/>
+  <!-- Häkchen im Glas -->
+  <path d="M102 110 L113 122 L136 96" stroke="#30d158" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Lupe Stiel -->
+  <path d="M146 138 L170 162" stroke="#30d158" stroke-width="10" stroke-linecap="round"/>
+  <!-- Glanzlicht auf Glas -->
+  <circle cx="106" cy="98" r="8" fill="rgba(255,255,255,.06)"/>
 </svg>
